@@ -196,6 +196,32 @@ class _FeedingSpotListPageState extends State<FeedingSpotListPage> {
                           ),
                           TextButton.icon(
                             style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              foregroundColor: provider.showHeatmap
+                                  ? MeowStyle.orangeDark
+                                  : MeowStyle.brown,
+                            ),
+                            onPressed: provider.toggleHeatmap,
+                            icon: Icon(
+                              Icons.local_fire_department_rounded,
+                              size: 16,
+                              color: provider.showHeatmap
+                                  ? MeowStyle.orange
+                                  : MeowStyle.brown,
+                            ),
+                            label: Text(
+                              provider.showHeatmap ? 'Heatmap: On' : 'Heatmap 14h',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -214,10 +240,15 @@ class _FeedingSpotListPageState extends State<FeedingSpotListPage> {
                                     onPressed: () => Navigator.pop(dialog),
                                   ),
                                 ),
-                                body: CampusSpotMap(
-                                  spots: provider.spots,
-                                  isDemo: provider.isDemo,
-                                  isFullScreen: true,
+                                body: Consumer<FeedingSpotProvider>(
+                                  builder: (_, liveProvider, __) => CampusSpotMap(
+                                    spots: liveProvider.spots,
+                                    isDemo: liveProvider.isDemo,
+                                    isFullScreen: true,
+                                    heatmapPoints: liveProvider.heatmapPoints,
+                                    showHeatmap: liveProvider.showHeatmap,
+                                    onToggleHeatmap: liveProvider.toggleHeatmap,
+                                  ),
                                 ),
                               ),
                             ),
@@ -230,10 +261,13 @@ class _FeedingSpotListPageState extends State<FeedingSpotListPage> {
                     CampusSpotMap(
                       spots: provider.spots,
                       isDemo: provider.isDemo,
+                      heatmapPoints: provider.heatmapPoints,
+                      showHeatmap: provider.showHeatmap,
+                      onToggleHeatmap: provider.toggleHeatmap,
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Warna menunjukkan aktivitas tercatat, bukan tingkat lapar kucing.',
+                      'Warna heatmap menunjukkan aktivitas tercatat 14 hari terakhir, bukan tingkat lapar kucing.',
                       style: TextStyle(fontSize: 10, color: MeowStyle.brown),
                       textAlign: TextAlign.center,
                     ),

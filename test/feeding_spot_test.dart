@@ -10,6 +10,7 @@ import 'package:meowtopia/core/widgets/walking_cat_loader.dart';
 import 'package:meowtopia/features/feeding_spot/data/feeding_spot_model.dart';
 import 'package:meowtopia/features/feeding_spot/feeding_spot_actions.dart';
 import 'package:meowtopia/features/feeding_spot/logic/feeding_spot_provider.dart';
+import 'package:meowtopia/features/feeding_spot/ui/feeding_widgets.dart';
 
 void main() {
   group('QR Parser Unit Tests (MEOW-27 & MEOW-28)', () {
@@ -398,5 +399,90 @@ void main() {
       );
       expect(session.catId, '01CAT999');
     });
+  });
+
+  group('Map Tile Error & 14-Day Heatmap Tests (MEOW-26)', () {
+    test('FeedingHeatmapPoint.fromJson memetakan kontrak /feeding/heatmap', () {
+      final point = FeedingHeatmapPoint.fromJson({
+        'spot_id': '01SPOT00000000000000000001',
+        'code': 'SPOT-TULT-01',
+        'name': 'Shelter TULT',
+        'latitude': -6.9693,
+        'longitude': 107.62815,
+        'window_days': 14,
+        'total_feedings': 5,
+        'verified_count': 3,
+        'pending_count': 2,
+        'need_score': 78.57,
+        'last_fed_at': '2026-11-24T08:00:00Z',
+      });
+
+      expect(point.spotId, '01SPOT00000000000000000001');
+      expect(point.verifiedCount, 3);
+      expect(point.isLowActivity, isTrue);
+      expect(point.activityBucketLabel, 'Jarang tercatat');
+      expect(point.coverage, closeTo(3 / 14, 0.001));
+    });
+
+    test('FeedingSpotProvider menyediakan heatmapPoints dan toggleHeatmap', () {
+      final provider = FeedingSpotProvider(isDemo: true);
+      expect(provider.showHeatmap, isFalse);
+      expect(provider.heatmapPoints, isNotEmpty);
+      expect(
+        provider.heatmapPoints.every(
+          (p) => provider.spots.any((s) => s.id == p.spotId),
+        ),
+        isTrue,
+      );
+
+      provider.toggleHeatmap();
+      expect(provider.showHeatmap, isTrue);
+      provider.toggleHeatmap(false);
+      expect(provider.showHeatmap, isFalse);
+    });
+
+    testWidgets(
+      'CampusSpotMap menampilkan banner error tile saat gagal muat & toggle legend heatmap 14 hari',
+      (tester) async {
+        final provider = FeedingSpotProvider(isDemo: true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: CampusSpotMap(
+                spots: provider.spots,
+                isDemo: true,
+                heatmapPoints: provider.heatmapPoints,
+                simulateTileError: true,
+              ),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        expect(
+          find.text(
+            'Peta gagal dimuat atau tidak ada koneksi. Daftar spot tetap dapat digunakan.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Rutin (14h)'), findsNothing);
+
+        await tester.tap(find.byTooltip('Tampilkan heatmap 14 hari'));
+        await tester.pump();
+        expect(find.text('Jarang'), findsOneWidget);
+        expect(find.text('Cukup'), findsOneWidget);
+        expect(find.text('Rutin (14h)'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Tutup peringatan peta'));
+        await tester.pump();
+        expect(
+          find.text(
+            'Peta gagal dimuat atau tidak ada koneksi. Daftar spot tetap dapat digunakan.',
+          ),
+          findsNothing,
+        );
+      },
+    );
   });
 }
