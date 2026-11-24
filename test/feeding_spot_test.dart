@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
 import 'package:meowtopia/core/hub/cat_action_registry.dart';
 import 'package:meowtopia/core/hub/register_actions.dart';
 import 'package:meowtopia/core/scanner/qr_parser.dart';
@@ -11,6 +13,7 @@ import 'package:meowtopia/features/feeding_spot/data/feeding_spot_model.dart';
 import 'package:meowtopia/features/feeding_spot/feeding_spot_actions.dart';
 import 'package:meowtopia/features/feeding_spot/logic/feeding_spot_provider.dart';
 import 'package:meowtopia/features/feeding_spot/ui/feeding_widgets.dart';
+import 'package:meowtopia/features/feeding_spot/ui/scan_spot_page.dart';
 
 void main() {
   group('QR Parser Unit Tests (MEOW-27 & MEOW-28)', () {
@@ -482,6 +485,135 @@ void main() {
           ),
           findsNothing,
         );
+      },
+    );
+  });
+
+  group('Camera Permission UX & QR Error Debounce Tests (MEOW-27)', () {
+    test(
+      'QrScanCooldown mencegah spam scan QR gagal yang sama selama durasi cooldown',
+      () {
+        final cooldown = QrScanCooldown(
+          cooldown: const Duration(milliseconds: 2500),
+        );
+        final t0 = DateTime(2026, 11, 25, 10, 0, 0);
+
+        expect(cooldown.shouldIgnore('MTP1.C.CAT01', now: t0), isFalse);
+
+        cooldown.recordFailure('MTP1.C.CAT01', now: t0);
+        // Token yang sama dalam 1 detik diabaikan
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.C.CAT01',
+            now: t0.add(const Duration(seconds: 1)),
+          ),
+          isTrue,
+        );
+        // Token berbeda tetap diproses langsung
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.S.SPOT-TULT-01',
+            now: t0.add(const Duration(seconds: 1)),
+          ),
+          isFalse,
+        );
+        // Setelah cooldown berlalu, token yang sama boleh dicoba lagi
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.C.CAT01',
+            now: t0.add(const Duration(seconds: 3)),
+          ),
+          isFalse,
+        );
+
+        cooldown.recordFailure('MTP1.C.CAT01', now: t0);
+        cooldown.reset();
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.C.CAT01',
+            now: t0.add(const Duration(milliseconds: 500)),
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'describeCameraScannerError membedakan izin ditolak dan kamera tidak tersedia',
+      () {
+        final denied = describeCameraScannerError(
+          MobileScannerErrorCode.permissionDenied,
+        );
+        expect(denied.title, 'Izin Kamera Ditolak');
+        expect(denied.showOpenSettings, isTrue);
+
+        final unsupported = describeCameraScannerError(
+          MobileScannerErrorCode.unsupported,
+        );
+        expect(unsupported.title, 'Kamera Tidak Tersedia');
+        expect(unsupported.showOpenSettings, isFalse);
+
+        final generic = describeCameraScannerError(
+          MobileScannerErrorCode.genericError,
+        );
+        expect(generic.title, 'Kamera Tidak Dapat Dibuka');
+        expect(generic.showOpenSettings, isTrue);
+      },
+    );
+
+    testWidgets(
+      'ScanSpotPage mendukung input kode manual fallback saat QR salah dan saat valid',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final provider = FeedingSpotProvider(isDemo: true);
+        final router = GoRouter(
+          initialLocation: '/feeding/scan',
+          routes: [
+            GoRoute(
+              path: '/feeding/scan',
+              builder: (_, __) => const ScanSpotPage(),
+            ),
+            GoRoute(
+              path: '/feeding/record',
+              builder: (_, __) => const Scaffold(body: Text('Record Page')),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ChangeNotifierProvider<FeedingSpotProvider>.value(
+            value: provider,
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+
+        // Buka dialog input manual dan masukkan QR kucing (harus muncul QR_WRONG_TYPE)
+        final manualBtn = find.text('Input kode manual spot');
+        await tester.ensureVisible(manualBtn);
+        await tester.tap(manualBtn);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'MTP1.C.CAT01');
+        await tester.tap(find.text('Gunakan Kode'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('QR_WRONG_TYPE'), findsOneWidget);
+
+        // Masukkan kode manual spot valid -> berpindah ke halaman record
+        final activeSpot = provider.spots.firstWhere((s) => s.isActive);
+        await tester.ensureVisible(manualBtn);
+        await tester.tap(manualBtn);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), activeSpot.code);
+        await tester.tap(find.text('Gunakan Kode'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Record Page'), findsOneWidget);
+        expect(provider.session?.spot.id, activeSpot.id);
+        router.dispose();
       },
     );
   });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,66 @@ import '../../../core/scanner/qr_parser.dart';
 import '../../../core/theme/meow_style.dart';
 import '../../../core/widgets/meow_widgets.dart';
 import '../logic/feeding_spot_provider.dart';
+
+/// Mencegah pemindai kamera mengirim permintaan berulang untuk QR yang sama
+/// saat gagal (misalnya QR kucing `QR_WRONG_TYPE`, `QR_REVOKED`, atau `QR_INVALID`).
+class QrScanCooldown {
+  QrScanCooldown({this.cooldown = const Duration(milliseconds: 2500)});
+
+  final Duration cooldown;
+  String? _lastFailedToken;
+  DateTime? _lastFailedAt;
+
+  bool shouldIgnore(String rawToken, {DateTime? now}) {
+    final normalized = rawToken.trim();
+    if (normalized.isEmpty || _lastFailedToken == null || _lastFailedAt == null) {
+      return false;
+    }
+    if (normalized != _lastFailedToken) return false;
+    final current = now ?? DateTime.now();
+    return current.difference(_lastFailedAt!) < cooldown;
+  }
+
+  void recordFailure(String rawToken, {DateTime? now}) {
+    final normalized = rawToken.trim();
+    if (normalized.isEmpty) return;
+    _lastFailedToken = normalized;
+    _lastFailedAt = now ?? DateTime.now();
+  }
+
+  void reset() {
+    _lastFailedToken = null;
+    _lastFailedAt = null;
+  }
+}
+
+/// Memetakan kode error `mobile_scanner` ke pesan ramah pengguna dan aksi lanjutan (MEOW-27).
+({String title, String message, bool showOpenSettings})
+describeCameraScannerError(MobileScannerErrorCode code) {
+  switch (code) {
+    case MobileScannerErrorCode.permissionDenied:
+      return (
+        title: 'Izin Kamera Ditolak',
+        message:
+            'Akses kamera dibutuhkan untuk memindai QR spot. Jika izin ditolak permanen, buka Pengaturan Aplikasi untuk mengaktifkannya atau gunakan input kode manual spot.',
+        showOpenSettings: true,
+      );
+    case MobileScannerErrorCode.unsupported:
+      return (
+        title: 'Kamera Tidak Tersedia',
+        message:
+            'Perangkat atau browser ini tidak mendukung pemindai kamera langsung. Gunakan input kode manual spot di bawah untuk tetap mencatat pemberian makan.',
+        showOpenSettings: false,
+      );
+    default:
+      return (
+        title: 'Kamera Tidak Dapat Dibuka',
+        message:
+            'Terjadi kendala saat menyiapkan kamera pemindai. Coba muat ulang kamera, periksa izin di Pengaturan, atau gunakan input kode manual spot.',
+        showOpenSettings: true,
+      );
+  }
+}
 
 class ScanSpotPage extends StatefulWidget {
   const ScanSpotPage({
@@ -28,6 +89,7 @@ class _ScanSpotPageState extends State<ScanSpotPage>
     detectionSpeed: DetectionSpeed.noDuplicates,
     formats: [BarcodeFormat.qrCode],
   );
+  final _scanCooldown = QrScanCooldown();
   bool _cameraEnabled = false;
   bool _busy = false;
   bool _torch = false;
@@ -58,9 +120,10 @@ class _ScanSpotPageState extends State<ScanSpotPage>
     super.dispose();
   }
 
-  Future<void> _openToken(String rawToken) async {
+  Future<void> _openToken(String rawToken, {bool fromCamera = false}) async {
     final trimmed = rawToken.trim();
     if (_busy || trimmed.isEmpty) return;
+    if (fromCamera && _scanCooldown.shouldIgnore(trimmed)) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -78,9 +141,13 @@ class _ScanSpotPageState extends State<ScanSpotPage>
         expectedSpotId: widget.expectedSpotId,
         catId: widget.initialCatId,
       );
+      _scanCooldown.reset();
       if (_cameraEnabled) await _controller.stop();
       if (mounted) context.pushReplacement('/feeding/record');
     } catch (e) {
+      if (fromCamera) {
+        _scanCooldown.recordFailure(trimmed);
+      }
       if (mounted) {
         setState(() {
           _error = e.toString().replaceFirst('Bad state: ', '');
@@ -90,47 +157,53 @@ class _ScanSpotPageState extends State<ScanSpotPage>
     }
   }
 
+  Future<void> _openAppSettings() async {
+    try {
+      final opened = await Geolocator.openAppSettings();
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Buka Pengaturan perangkat secara manual lalu izinkan akses Kamera untuk Meowtopia.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Pengaturan perangkat tidak dapat dibuka otomatis di platform ini. Gunakan input kode manual spot.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _retryCamera() async {
+    _scanCooldown.reset();
+    setState(() {
+      _error = null;
+      _cameraEnabled = true;
+    });
+    try {
+      await _controller.start();
+    } catch (_) {
+      // errorBuilder pada MobileScanner akan menampilkan panduan yang sesuai.
+    }
+  }
+
   Future<void> _manualInput() async {
-    final input = TextEditingController();
     final token = await showDialog<String>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Input Kode Manual Spot'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Masukkan kode manual spot (contoh: SPOT-TULT-01) yang tertera pada stiker lokasi atau token QR resmi (MTP1.S.*) apabila QR rusak atau tidak terbaca kamera.',
-              style: TextStyle(fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: input,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                labelText: 'Kode manual spot / Token QR',
-                hintText: 'Contoh: SPOT-TULT-01',
-              ),
-              onSubmitted: (value) => Navigator.pop(dialog, value),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialog, input.text),
-            child: const Text('Gunakan Kode'),
-          ),
-        ],
-      ),
+      builder: (_) => const _ManualSpotCodeDialog(),
     );
-    // Dispose after the dialog's exit animation has detached its text field.
-    Future<void>.delayed(const Duration(milliseconds: 300), input.dispose);
-    if (token != null && mounted) await _openToken(token);
+    if (token != null && mounted) {
+      _scanCooldown.reset();
+      await _openToken(token, fromCamera: false);
+    }
   }
 
   @override
@@ -157,43 +230,100 @@ class _ScanSpotPageState extends State<ScanSpotPage>
                             onDetect: (capture) {
                               if (capture.barcodes.isNotEmpty) {
                                 final value = capture.barcodes.first.rawValue;
-                                if (value != null) _openToken(value);
+                                if (value != null) {
+                                  _openToken(value, fromCamera: true);
+                                }
                               }
                             },
-                            errorBuilder: (context, error, child) => Container(
-                              color: MeowStyle.slate,
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.no_photography_outlined,
-                                    color: MeowStyle.peach,
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Kamera tidak tersedia atau izin kamera ditolak. Berikan izin kamera di pengaturan perangkat, atau gunakan input kode manual spot di bawah.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      height: 1.6,
+                            errorBuilder: (context, error, child) {
+                              final info = describeCameraScannerError(
+                                error.errorCode,
+                              );
+                              return Container(
+                                color: MeowStyle.slate,
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.no_photography_outlined,
+                                      color: MeowStyle.peach,
+                                      size: 40,
                                     ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  FilledButton.icon(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: MeowStyle.orange,
-                                      foregroundColor: Colors.white,
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      info.title,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                      ),
                                     ),
-                                    onPressed: _busy ? null : _manualInput,
-                                    icon: const Icon(Icons.pin_outlined, size: 18),
-                                    label: const Text('Input Kode Manual Spot'),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      info.message,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFFE2E7FF),
+                                        fontSize: 12.5,
+                                        height: 1.55,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 10,
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        FilledButton.icon(
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: MeowStyle.orange,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: _busy ? null : _manualInput,
+                                          icon: const Icon(
+                                            Icons.pin_outlined,
+                                            size: 18,
+                                          ),
+                                          label: const Text(
+                                            'Input Kode Manual Spot',
+                                          ),
+                                        ),
+                                        if (info.showOpenSettings)
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: Colors.white,
+                                              side: const BorderSide(
+                                                color: MeowStyle.peach,
+                                              ),
+                                            ),
+                                            onPressed: _openAppSettings,
+                                            icon: const Icon(
+                                              Icons.settings_outlined,
+                                              size: 18,
+                                            ),
+                                            label: const Text('Buka Pengaturan'),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextButton.icon(
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: MeowStyle.peach,
+                                      ),
+                                      onPressed: _busy ? null : _retryCamera,
+                                      icon: const Icon(
+                                        Icons.refresh_rounded,
+                                        size: 18,
+                                      ),
+                                      label: const Text('Coba Muat Kamera Lagi'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           )
                         : Image.asset(
                             'assets/images/figma/spot-scan-background.png',
@@ -510,4 +640,58 @@ class _ScanFramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ManualSpotCodeDialog extends StatefulWidget {
+  const _ManualSpotCodeDialog();
+
+  @override
+  State<_ManualSpotCodeDialog> createState() => _ManualSpotCodeDialogState();
+}
+
+class _ManualSpotCodeDialogState extends State<_ManualSpotCodeDialog> {
+  final TextEditingController _input = TextEditingController();
+
+  @override
+  void dispose() {
+    _input.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Input Kode Manual Spot'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Masukkan kode manual spot (contoh: SPOT-TULT-01) yang tertera pada stiker lokasi atau token QR resmi (MTP1.S.*) apabila QR rusak atau tidak terbaca kamera.',
+            style: TextStyle(fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _input,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              labelText: 'Kode manual spot / Token QR',
+              hintText: 'Contoh: SPOT-TULT-01',
+            ),
+            onSubmitted: (value) => Navigator.pop(context, value),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _input.text),
+          child: const Text('Gunakan Kode'),
+        ),
+      ],
+    );
+  }
 }
