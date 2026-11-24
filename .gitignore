@@ -46,3 +46,18 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Additional Android/iOS/OS ignores (migrated from monorepo)
+Thumbs.db
+.tools/
+.flutter-plugins
+.packages
+ios/Pods/
+ios/.symlinks/
+android/.gradle/
+android/local.properties
+android/gradle-app.setting
+android/captures/
+android/app/build/
+android/*.iml
+ios/*.iml

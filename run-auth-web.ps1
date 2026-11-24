@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$envFile = Join-Path $PSScriptRoot '../backend/.env'
+$envFile = if (Test-Path (Join-Path $PSScriptRoot '../Backend/.env')) { Join-Path $PSScriptRoot '../Backend/.env' } else { Join-Path $PSScriptRoot '../backend/.env' }
 $googleClientId = ''
 if ($EnableEmailServices -and (Test-Path -LiteralPath $envFile)) {
     $line = Get-Content -LiteralPath $envFile |
