@@ -9,8 +9,15 @@ import '../../../core/widgets/meow_widgets.dart';
 import '../logic/feeding_spot_provider.dart';
 
 class ScanSpotPage extends StatefulWidget {
-  const ScanSpotPage({super.key, this.expectedSpotId});
+  const ScanSpotPage({
+    super.key,
+    this.expectedSpotId,
+    this.initialCatId,
+    this.initialQrToken,
+  });
   final String? expectedSpotId;
+  final String? initialCatId;
+  final String? initialQrToken;
   @override
   State<ScanSpotPage> createState() => _ScanSpotPageState();
 }
@@ -29,6 +36,12 @@ class _ScanSpotPageState extends State<ScanSpotPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final initialToken = widget.initialQrToken?.trim();
+    if (initialToken != null && initialToken.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openToken(initialToken);
+      });
+    }
   }
 
   @override
@@ -63,6 +76,7 @@ class _ScanSpotPageState extends State<ScanSpotPage>
       await context.read<FeedingSpotProvider>().openSession(
         normalizedToken,
         expectedSpotId: widget.expectedSpotId,
+        catId: widget.initialCatId,
       );
       if (_cameraEnabled) await _controller.stop();
       if (mounted) context.pushReplacement('/feeding/record');

@@ -174,6 +174,7 @@ class FeedingSpotProvider extends ChangeNotifier {
   Future<FeedingSession> openSession(
     String rawToken, {
     String? expectedSpotId,
+    String? catId,
   }) async {
     final token = rawToken.trim();
     if (token.isEmpty) throw StateError('Masukkan token QR spot yang valid.');
@@ -225,6 +226,9 @@ class FeedingSpotProvider extends ChangeNotifier {
           intentDeadlineAt: intentDeadlineAt,
           finalizeDeadlineAt: finalizeDeadlineAt,
         );
+        if (catId != null && catId.trim().isNotEmpty) {
+          session!.catId = catId.trim();
+        }
         notifyListeners();
         return session!;
       } catch (e) {
@@ -288,6 +292,9 @@ class FeedingSpotProvider extends ChangeNotifier {
       startedAt: now,
       expiresAt: now.add(const Duration(minutes: 15)),
     );
+    if (catId != null && catId.trim().isNotEmpty) {
+      session!.catId = catId.trim();
+    }
     notifyListeners();
     return session!;
   }

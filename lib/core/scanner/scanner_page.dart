@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../features/feeding_spot/feeding_spot_actions.dart';
 import '../constants/app_constants.dart';
 import '../network/api_client.dart';
 import '../widgets/loading_indicator.dart';
@@ -65,7 +66,11 @@ class _ScannerPageState extends State<ScannerPage> {
         if (type != 'spot') {
           throw Exception('QR_WRONG_TYPE: Harap pindai QR titik makan resmi Meowtopia.');
         }
-        context.push('/feeding/record', extra: {'spot_id': id, 'name': data['name']});
+        FeedingSpotActions.primarySpotAction.onExecute(
+          context,
+          spotId: id,
+          qrToken: rawCode.trim(),
+        );
       } else if (widget.purpose == ScanPurpose.encounter) {
         if (type != 'cat') {
           throw Exception('QR_WRONG_TYPE: Harap pindai QR kalung kucing Meowtopia.');

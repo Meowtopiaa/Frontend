@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meowtopia/core/hub/cat_action_registry.dart';
+import 'package:meowtopia/core/hub/register_actions.dart';
 import 'package:meowtopia/core/scanner/qr_parser.dart';
 import 'package:meowtopia/core/widgets/loading_indicator.dart';
 import 'package:meowtopia/core/widgets/page_transition_overlay.dart';
 import 'package:meowtopia/core/widgets/walking_cat_loader.dart';
 import 'package:meowtopia/features/feeding_spot/data/feeding_spot_model.dart';
+import 'package:meowtopia/features/feeding_spot/feeding_spot_actions.dart';
 import 'package:meowtopia/features/feeding_spot/logic/feeding_spot_provider.dart';
 
 void main() {
@@ -339,6 +342,61 @@ void main() {
 
       router.dispose();
       transitionNotifier.dispose();
+    });
+  });
+
+  group('Hub Action Registration Tests (MEOW-18)', () {
+    testWidgets(
+      'registerDefaultCatActions mendaftarkan feeding.start dan menavigasi ke /feeding/scan',
+      (tester) async {
+        registerDefaultCatActions();
+        final action = CatActionRegistry.byId(
+          FeedingSpotActions.startFeedingActionKey,
+        );
+        expect(action, isNotNull);
+        expect(action!.id, 'feeding.start');
+
+        String? navigatedUri;
+        final router = GoRouter(
+          initialLocation: '/cat',
+          routes: [
+            GoRoute(
+              path: '/cat',
+              builder: (context, _) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => action.onTap(context, '01CAT123'),
+                  child: const Text('Mulai Makan'),
+                ),
+              ),
+            ),
+            GoRoute(
+              path: '/feeding/scan',
+              builder: (_, state) {
+                navigatedUri = state.uri.toString();
+                return const Scaffold(body: Text('Scan Page'));
+              },
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.tap(find.text('Mulai Makan'));
+        await tester.pumpAndSettle();
+
+        expect(navigatedUri, '/feeding/scan?cat_id=01CAT123');
+        expect(find.text('Scan Page'), findsOneWidget);
+        router.dispose();
+      },
+    );
+
+    test('openSession menyimpan catId saat dipicu dari aksi Hub kucing', () async {
+      final provider = FeedingSpotProvider(isDemo: true);
+      final spot = provider.spots.firstWhere((s) => s.isActive);
+      final session = await provider.openSession(
+        spot.qrToken,
+        catId: '01CAT999',
+      );
+      expect(session.catId, '01CAT999');
     });
   });
 }

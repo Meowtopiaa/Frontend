@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'core/hub/register_actions.dart';
 import 'features/auth/logic/auth_provider.dart';
 import 'features/cat/logic/cat_provider.dart';
 import 'features/cat_adoption/logic/adoption_provider.dart';
@@ -12,6 +13,7 @@ import 'features/incident_report/logic/incident_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  registerDefaultCatActions();
 
   runApp(
     MultiProvider(
