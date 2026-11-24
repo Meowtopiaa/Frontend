@@ -1,17 +1,17 @@
-# Meowtopia — FrontEnd (Flutter)
+# Meowtopia — Frontend (Flutter)
 
-Repositori aplikasi mobile & web Flutter untuk **Meowtopia Super App** (dipisahkan dari monorepo SuperAppMeowtopia).
-Acuan kebutuhan: docs/PRD.md (PRD Final v1.1).
+Repositori aplikasi mobile & web Flutter untuk **Meowtopia Super App** (dipisahkan dari monorepo `SuperAppMeowtopia`).
+Acuan kebutuhan: `docs/PRD.md` (PRD Final v1.1).
 
 ## Struktur Branch
-- main: Branch produksi/rilis utama.
-- development: Branch integrasi pengembangan (base dari semua branch kelompok).
-- Branch kelompok (parent dari development):
-  - 	eam/acumalaka (lib/features/feeding_spot/, auth & base design)
-  - 	eam/super-sub (lib/features/cat_hunter/)
-  - 	eam/enigma (lib/features/cat_adoption/)
-  - 	eam/optimind (lib/features/incident_report/)
-  - 	eam/rekans-caps (lib/features/cat/, lib/features/cat_identification/)
+- `main`: Branch produksi/rilis utama.
+- `development`: Branch integrasi pengembangan (base dari semua branch kelompok).
+- Branch kelompok (parent dari `development`):
+  - `team/acumalaka` (`lib/features/feeding_spot/`, auth & base design)
+  - `team/super-sub` (`lib/features/cat_hunter/`)
+  - `team/enigma` (`lib/features/cat_adoption/`)
+  - `team/optimind` (`lib/features/incident_report/`)
+  - `team/rekans-caps` (`lib/features/cat/`, `lib/features/cat_identification/`)
 
 ## Menjalankan Lokal
 ```bash
