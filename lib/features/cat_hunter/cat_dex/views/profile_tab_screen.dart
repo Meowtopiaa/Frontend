@@ -111,7 +111,7 @@ class ProfileTabScreen extends StatelessWidget {
   void _showCapstoneInfoDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.cardBg(dialogContext),
         shape: RoundedRectangleBorder(
@@ -142,7 +142,7 @@ class ProfileTabScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'TelCat World â€” Super App Kucing Kampus',
+              'TelCat World Ã¢â‚¬â€ Super App Kucing Kampus',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -360,7 +360,7 @@ class ProfileTabScreen extends StatelessWidget {
 
     showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (dialogContext) => Dialog(
         backgroundColor: AppColors.cardBg(dialogContext),
         shape: RoundedRectangleBorder(
@@ -394,14 +394,14 @@ class ProfileTabScreen extends StatelessWidget {
                       BorderRadius.circular(AppDimensions.radiusFull),
                   border: Border.all(
                     color: unlocked
-                        ? AppColors.sweetSpotGreen.withOpacity(0.4)
+                        ? AppColors.sweetSpotGreen.withValues(alpha: 0.4)
                         : AppColors.borderInteractiveOf(dialogContext),
                   ),
                 ),
                 child: Text(
                   unlocked
-                      ? 'Terbuka â€¢ $displayCurrent / ${medal.target}'
-                      : 'Terkunci â€¢ Progres $displayCurrent / ${medal.target}',
+                      ? 'Terbuka Ã¢â‚¬Â¢ $displayCurrent / ${medal.target}'
+                      : 'Terkunci Ã¢â‚¬Â¢ Progres $displayCurrent / ${medal.target}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -477,7 +477,7 @@ class ProfileTabScreen extends StatelessWidget {
         boxShadow: unlocked
             ? [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.28),
+                  color: AppColors.primary.withValues(alpha: 0.28),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -527,7 +527,7 @@ class ProfileTabScreen extends StatelessWidget {
           backgroundColor: AppColors.scaffoldBg(context),
           appBar: AppHeaderBar(
             title: 'Profil Pengguna',
-            subtitle: 'TelCat World â€¢ Civitas Akademika',
+            subtitle: 'TelCat World Ã¢â‚¬Â¢ Civitas Akademika',
             statusText: 'Terverifikasi',
             onTitleHoldTwoSeconds: () => showDemoDebugSheet(context),
             onInfoPressed: () => _showCapstoneInfoDialog(context),
@@ -625,7 +625,7 @@ class ProfileTabScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'S1 Sistem Informasi â€¢ 120220xxxx',
+                                'S1 Sistem Informasi Ã¢â‚¬Â¢ 120220xxxx',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondaryOf(context),
@@ -667,7 +667,7 @@ class ProfileTabScreen extends StatelessWidget {
                                   ),
                                   border: Border.all(
                                     color: AppColors.primaryOf(context)
-                                        .withOpacity(0.28),
+                                        .withValues(alpha: 0.28),
                                   ),
                                 ),
                                 child: Row(
@@ -713,7 +713,7 @@ class ProfileTabScreen extends StatelessWidget {
                           context: context,
                           title: 'Kucing Terkoleksi',
                           value: '$collected',
-                          emoji: 'ðŸ¾',
+                          emoji: 'Ã°Å¸ÂÂ¾',
                           color: AppColors.sweetSpotGreen,
                         ),
                       ),
@@ -723,7 +723,7 @@ class ProfileTabScreen extends StatelessWidget {
                           context: context,
                           title: 'Total Pertemuan',
                           value: '$totalEncounters',
-                          emoji: 'ðŸ’–',
+                          emoji: 'Ã°Å¸â€™â€“',
                           color: AppColors.primaryOf(context),
                         ),
                       ),
@@ -789,7 +789,7 @@ class ProfileTabScreen extends StatelessWidget {
                         ),
                         Switch(
                           value: AppColors.isDark(context),
-                          activeColor: AppColors.darkPrimary,
+                          activeThumbColor: AppColors.darkPrimary,
                           onChanged: (_) =>
                               ThemeController.instance.toggleTheme(context),
                         ),
@@ -858,7 +858,7 @@ class ProfileTabScreen extends StatelessWidget {
                             border: Border.all(
                               color: unlocked
                                   ? AppColors.primaryOf(context)
-                                      .withOpacity(0.45)
+                                      .withValues(alpha: 0.45)
                                   : AppColors.borderOf(context),
                               width: unlocked ? 1.5 : 1,
                             ),

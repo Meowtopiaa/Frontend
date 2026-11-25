@@ -228,7 +228,7 @@ class CatbookPolaroidModal extends StatelessWidget {
                       borderRadius:
                           BorderRadius.circular(AppDimensions.radiusCard),
                       border: Border.all(
-                        color: AppColors.primaryOf(context).withOpacity(0.28),
+                        color: AppColors.primaryOf(context).withValues(alpha: 0.28),
                       ),
                     ),
                     child: Row(
@@ -269,14 +269,14 @@ class CatbookPolaroidModal extends StatelessWidget {
                       onPressed: () {
                         showDialog<bool>(
                           context: context,
-                          barrierColor: Colors.black.withOpacity(0.55),
+                          barrierColor: Colors.black.withValues(alpha: 0.55),
                           builder: (_) => RenameCatDialog(catId: currentCat.id),
                         );
                       },
                     ),
                     const SizedBox(height: 10),
                     SecondaryButton(
-                      label: 'Kunjungi di Kafe Kucing â˜•',
+                      label: 'Kunjungi di Kafe Kucing Ã¢Ëœâ€¢',
                       icon: Icons.coffee_rounded,
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -285,7 +285,7 @@ class CatbookPolaroidModal extends StatelessWidget {
                     ),
                   ] else ...[
                     PrimaryButton(
-                      label: 'Kunjungi di Kafe Kucing â˜•',
+                      label: 'Kunjungi di Kafe Kucing Ã¢Ëœâ€¢',
                       icon: Icons.coffee_rounded,
                       onPressed: () {
                         Navigator.of(context).pop();

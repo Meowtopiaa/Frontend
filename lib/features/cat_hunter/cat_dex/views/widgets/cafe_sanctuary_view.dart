@@ -208,7 +208,7 @@ class _CafeSanctuaryViewState extends State<CafeSanctuaryView> {
                     child: Tooltip(
                       message: 'Mode Layar Penuh',
                       child: Material(
-                        color: AppColors.cardBg(context).withOpacity(0.92),
+                        color: AppColors.cardBg(context).withValues(alpha: 0.92),
                         shape: const CircleBorder(),
                         elevation: 3,
                         child: InkWell(
@@ -242,7 +242,7 @@ class _CafeSanctuaryViewState extends State<CafeSanctuaryView> {
                 color: AppColors.cardBg(context),
                 borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
                 border: Border.all(
-                  color: AppColors.primaryOf(context).withOpacity(0.35),
+                  color: AppColors.primaryOf(context).withValues(alpha: 0.35),
                   width: 1.5,
                 ),
                 boxShadow: AppDimensions.cardShadow,
@@ -453,7 +453,7 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('ðŸ“¸ Foto Kafe Tersimpan!'),
+        content: Text('Ã°Å¸â€œÂ¸ Foto Kafe Tersimpan!'),
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: 2),
       ),
@@ -536,14 +536,14 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
                             ),
                             decoration: BoxDecoration(
                               color: isNight
-                                  ? Colors.black.withOpacity(0.55)
-                                  : Colors.white.withOpacity(0.92),
+                                  ? Colors.black.withValues(alpha: 0.55)
+                                  : Colors.white.withValues(alpha: 0.92),
                               borderRadius: BorderRadius.circular(
                                 AppDimensions.radiusFull,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.12),
+                                  color: Colors.black.withValues(alpha: 0.12),
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
                                 ),
@@ -603,13 +603,13 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.94),
+                          color: Colors.white.withValues(alpha: 0.94),
                           borderRadius: BorderRadius.circular(
                             AppDimensions.radiusFull,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.16),
+                              color: Colors.black.withValues(alpha: 0.16),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),
@@ -619,14 +619,14 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _ToyButton(
-                              emoji: 'ðŸŸ',
+                              emoji: 'Ã°Å¸ÂÅ¸',
                               label: 'Snack Ikan',
                               isActive: false,
                               onTap: _triggerFishSnack,
                             ),
                             const SizedBox(width: 8),
                             _ToyButton(
-                              emoji: 'ðŸ”´',
+                              emoji: 'Ã°Å¸â€Â´',
                               label: 'Laser Pointer',
                               isActive: _isLaserMode,
                               onTap: _toggleLaserMode,
@@ -671,7 +671,7 @@ class _FullScreenHudButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         shape: const CircleBorder(),
         elevation: 3,
         child: InkWell(

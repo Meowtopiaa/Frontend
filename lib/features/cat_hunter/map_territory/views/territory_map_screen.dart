@@ -27,13 +27,13 @@ extension MapAtmosphereModeInfo on MapAtmosphereMode {
   String get buttonLabel {
     switch (this) {
       case MapAtmosphereMode.auto:
-        return 'ðŸ•’ Otomatis';
+        return 'Ã°Å¸â€¢â€™ Otomatis';
       case MapAtmosphereMode.morning:
-        return 'â˜€ï¸ Pagi';
+        return 'Ã¢Ëœâ‚¬Ã¯Â¸Â Pagi';
       case MapAtmosphereMode.dusk:
-        return 'ðŸŒ… Senja';
+        return 'Ã°Å¸Å’â€¦ Senja';
       case MapAtmosphereMode.night:
-        return 'ðŸŒ™ Malam';
+        return 'Ã°Å¸Å’â„¢ Malam';
     }
   }
 
@@ -195,8 +195,8 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
 
   static const List<String> _zoneChatterOptions = [
     'Meow!',
-    'ðŸŸ',
-    'ðŸ’¤',
+    'Ã°Å¸ÂÅ¸',
+    'Ã°Å¸â€™Â¤',
   ];
 
   final math.Random _random = math.Random();
@@ -345,7 +345,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
           backgroundColor: AppColors.scaffoldBg(context),
           appBar: const AppHeaderBar(
             title: 'Peta Teritorial Kucing',
-            subtitle: 'TelCat World â€¢ Kampus Tel-U',
+            subtitle: 'TelCat World Ã¢â‚¬Â¢ Kampus Tel-U',
             statusText: '4 Zona',
           ),
           body: SafeArea(
@@ -452,7 +452,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                                       height: 4,
                                                       decoration: BoxDecoration(
                                                         color: Colors.black
-                                                            .withOpacity(0.18),
+                                                            .withValues(alpha: 0.18),
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(4),
@@ -477,9 +477,9 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                               color: resolvedTime ==
                                                       _ResolvedTimeOfDay.dusk
                                                   ? Colors.deepOrange
-                                                      .withOpacity(0.16)
+                                                      .withValues(alpha: 0.16)
                                                   : const Color(0xFF1A237E)
-                                                      .withOpacity(0.28),
+                                                      .withValues(alpha: 0.28),
                                             ),
                                           ),
                                         ),
@@ -508,12 +508,10 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                                         colors: [
                                                           const Color(
                                                                   0xFFFFE082)
-                                                              .withOpacity(
-                                                                  0.85 * glow),
+                                                              .withValues(alpha: 0.85 * glow),
                                                           const Color(
                                                                   0xFFFFB300)
-                                                              .withOpacity(
-                                                                  0.25 * glow),
+                                                              .withValues(alpha: 0.25 * glow),
                                                           Colors.transparent,
                                                         ],
                                                       ),
@@ -603,8 +601,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                                                   Border.all(
                                                                 color: AppColors
                                                                     .primary
-                                                                    .withOpacity(
-                                                                        1 - p),
+                                                                    .withValues(alpha: 1 - p),
                                                                 width: 2.2,
                                                               ),
                                                             ),
@@ -686,7 +683,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                   horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
                                 color:
-                                    AppColors.cardBg(context).withOpacity(0.92),
+                                    AppColors.cardBg(context).withValues(alpha: 0.92),
                                 borderRadius: BorderRadius.circular(
                                     AppDimensions.radiusFull),
                                 boxShadow: const [
@@ -721,7 +718,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                             top: 12,
                             right: 12,
                             child: Material(
-                              color: AppColors.cardBg(context).withOpacity(0.92),
+                              color: AppColors.cardBg(context).withValues(alpha: 0.92),
                               borderRadius: BorderRadius.circular(
                                   AppDimensions.radiusFull),
                               elevation: 2,
@@ -820,7 +817,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
             borderRadius: BorderRadius.circular(width),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withOpacity(0.55),
+                color: Colors.white.withValues(alpha: 0.55),
                 blurRadius: 12,
                 spreadRadius: 3,
               ),

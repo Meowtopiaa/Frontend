@@ -356,7 +356,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.favorite_border_rounded,
                               size: 20,
-                              color: AppColors.primary.withOpacity(0.45),
+                              color: AppColors.primary.withValues(alpha: 0.45),
                             ),
                           ),
                           Positioned(
@@ -365,7 +365,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.auto_awesome_rounded,
                               size: 22,
-                              color: AppColors.swipeHalo.withOpacity(0.8),
+                              color: AppColors.swipeHalo.withValues(alpha: 0.8),
                             ),
                           ),
                           Positioned(
@@ -374,7 +374,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.auto_awesome_rounded,
                               size: 20,
-                              color: AppColors.primary.withOpacity(0.55),
+                              color: AppColors.primary.withValues(alpha: 0.55),
                             ),
                           ),
                           Positioned(
@@ -383,7 +383,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.favorite_border_rounded,
                               size: 22,
-                              color: AppColors.primaryPeachDark.withOpacity(0.4),
+                              color: AppColors.primaryPeachDark.withValues(alpha: 0.4),
                             ),
                           ),
 
@@ -398,7 +398,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                                   borderRadius: BorderRadius.circular(100),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.14),
+                                      color: Colors.black.withValues(alpha: 0.14),
                                       blurRadius: 22,
                                       spreadRadius: 2,
                                     ),
@@ -449,7 +449,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                               painter: _SwipeGuidePainter(
                                 pose: _currentPose,
                                 catSpan: catSize,
-                                pathColor: AppColors.swipePath.withOpacity(0.75),
+                                pathColor: AppColors.swipePath.withValues(alpha: 0.75),
                               ),
                             ),
                           ),
@@ -508,7 +508,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                           if (_isPaused)
                             Positioned.fill(
                               child: Container(
-                                color: Colors.black.withOpacity(0.35),
+                                color: Colors.black.withValues(alpha: 0.35),
                                 child: Center(
                                   child: GestureDetector(
                                     onTap: () =>
@@ -524,7 +524,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                                         boxShadow: [
                                           BoxShadow(
                                             color:
-                                                Colors.black.withOpacity(0.18),
+                                                Colors.black.withValues(alpha: 0.18),
                                             blurRadius: 20,
                                           ),
                                         ],
@@ -586,11 +586,11 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -627,11 +627,11 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.white.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -731,11 +731,11 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.white.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -751,7 +751,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                     shape: BoxShape.circle,
                     color: activePhaseIndex == 0
                         ? AppColors.primary
-                        : AppColors.primary.withOpacity(0.35),
+                        : AppColors.primary.withValues(alpha: 0.35),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -768,7 +768,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                     shape: BoxShape.circle,
                     color: activePhaseIndex == 1
                         ? AppColors.primary
-                        : AppColors.primary.withOpacity(0.35),
+                        : AppColors.primary.withValues(alpha: 0.35),
                   ),
                 ),
               ],
@@ -802,11 +802,11 @@ class _CircleHudButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
+          color: Colors.white.withValues(alpha: 0.95),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -854,7 +854,7 @@ class _GlowingOrbWidget extends StatelessWidget {
             border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
               BoxShadow(
-                color: AppColors.swipeHalo.withOpacity(0.75),
+                color: AppColors.swipeHalo.withValues(alpha: 0.75),
                 blurRadius: 16,
                 spreadRadius: 3,
               ),
@@ -1005,7 +1005,7 @@ class _SwipeTrailPainter extends CustomPainter {
       final p1 = points[i];
       final alpha = (1.0 - (p1.age / 0.28)).clamp(0.0, 1.0);
       final paint = Paint()
-        ..color = AppColors.swipeHalo.withOpacity(alpha * 0.85)
+        ..color = AppColors.swipeHalo.withValues(alpha: alpha * 0.85)
         ..strokeWidth = 10.0 * alpha
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(p0.offset, p1.offset, paint);

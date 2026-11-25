@@ -60,7 +60,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   Future<void> _openRenameDialog() async {
     final renamed = await showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (_) => RenameCatDialog(catId: widget.catId),
     );
 
@@ -89,10 +89,10 @@ class _CelebrationScreenState extends State<CelebrationScreen>
         String subtitleText;
         if (cat.canBeNamed) {
           titleText = 'Kucing Kampus Resmi\nJadi Sahabatmu!';
-          subtitleText = 'Kamu membuka status pertemanan sejati ðŸŒŸ';
+          subtitleText = 'Kamu membuka status pertemanan sejati Ã°Å¸Å’Å¸';
         } else if (cat.isNameLocked) {
           titleText = '${cat.name} Senang\nBertemu Lagi!';
-          subtitleText = 'Ikatan persahabatan kalian makin erat ðŸ’–';
+          subtitleText = 'Ikatan persahabatan kalian makin erat Ã°Å¸â€™â€“';
         } else {
           final remaining = (5 - cat.encounterCount).clamp(1, 5);
           titleText = 'Kamu Berhasil\nMenjinakkannya!';
@@ -121,7 +121,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
               // Radial Sunburst
               CustomPaint(
                 painter: _CelebrationSunburstPainter(
-                  rayColor: Colors.white.withOpacity(0.45),
+                  rayColor: Colors.white.withValues(alpha: 0.45),
                 ),
               ),
 
@@ -164,14 +164,14 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                           borderRadius: BorderRadius.circular(999),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withOpacity(0.32),
+                              color: AppColors.primary.withValues(alpha: 0.32),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
                         child: const Text(
-                          'â˜…  IKATAN TERJALIN!  â˜…',
+                          'Ã¢Ëœâ€¦  IKATAN TERJALIN!  Ã¢Ëœâ€¦',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -219,7 +219,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                                   shape: BoxShape.circle,
                                   gradient: RadialGradient(
                                     colors: [
-                                      Colors.white.withOpacity(0.65),
+                                      Colors.white.withValues(alpha: 0.65),
                                       Colors.transparent,
                                     ],
                                   ),
@@ -262,7 +262,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                           border: Border.all(color: AppColors.borderSubtle),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -286,7 +286,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                             const SizedBox(width: 10),
                             Text(
                               cat.isNameLocked
-                                  ? 'Pertemuan $displayEncounter / 5 â€¢ ${cat.name}'
+                                  ? 'Pertemuan $displayEncounter / 5 Ã¢â‚¬Â¢ ${cat.name}'
                                   : 'Pertemuan $displayEncounter / 5',
                               style: const TextStyle(
                                 fontSize: 15,
@@ -411,7 +411,7 @@ class _ConfettiHeartsPainter extends CustomPainter {
       final xPos =
           xFactor * size.width + math.sin((progress * 2 * math.pi) + i) * 10;
 
-      final paint = Paint()..color = color.withOpacity(0.75);
+      final paint = Paint()..color = color.withValues(alpha: 0.75);
       canvas.drawCircle(Offset(xPos, yPos), radius, paint);
     }
   }

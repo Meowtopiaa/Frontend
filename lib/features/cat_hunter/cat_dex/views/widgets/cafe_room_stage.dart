@@ -166,7 +166,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
     ),
   ];
 
-  static const List<String> _chatSymbols = ['â¤ï¸', 'ðŸ¾', 'â“', 'ðŸŽµ'];
+  static const List<String> _chatSymbols = ['Ã¢ÂÂ¤Ã¯Â¸Â', 'Ã°Å¸ÂÂ¾', 'Ã¢Ââ€œ', 'Ã°Å¸Å½Âµ'];
 
   final Map<String, GlobalKey<_CafeWalkingCatState>> _catKeys = {};
   final Map<String, int> _catWaypointIndices = {};
@@ -558,9 +558,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(
-                            widget.theme == CafeTheme.night ? 0.22 : 0.08,
-                          ),
+                          Colors.black.withValues(alpha: widget.theme == CafeTheme.night ? 0.22 : 0.08,),
                         ],
                       ),
                     ),
@@ -586,18 +584,18 @@ class CafeRoomStageState extends State<CafeRoomStage>
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.90),
+                          color: Colors.white.withValues(alpha: 0.90),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.swipeHalo.withOpacity(0.75),
+                              color: AppColors.swipeHalo.withValues(alpha: 0.75),
                               blurRadius: 14,
                               spreadRadius: 2,
                             ),
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Text('ðŸŸ', style: TextStyle(fontSize: 24)),
+                        child: const Text('Ã°Å¸ÂÅ¸', style: TextStyle(fontSize: 24)),
                       ),
                     ),
                   ),
@@ -690,7 +688,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF1744).withOpacity(0.85),
+                            color: const Color(0xFFFF1744).withValues(alpha: 0.85),
                             blurRadius: 16,
                             spreadRadius: 5,
                           ),
@@ -1015,7 +1013,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
       _behavior = _CatLoopBehavior.furnitureSleep;
       _sleepUseBelly = _random.nextBool();
       _showHearts = false;
-      _bubbleText = 'Zzz... ðŸ’¤';
+      _bubbleText = 'Zzz... Ã°Å¸â€™Â¤';
     });
 
     _heartController.repeat();
@@ -1037,7 +1035,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
     setState(() {
       _behavior = _CatLoopBehavior.furnitureEat;
       _showHearts = true;
-      _bubbleText = 'ðŸŸ';
+      _bubbleText = 'Ã°Å¸ÂÅ¸';
     });
 
     _jumpController.repeat(reverse: true);
@@ -1229,11 +1227,11 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
               height: _isDragging ? 14 : 10,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(100),
-                color: Colors.black.withOpacity(_isDragging ? 0.14 : 0.16),
+                color: Colors.black.withValues(alpha: _isDragging ? 0.14 : 0.16),
                 boxShadow: _isDragging
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.18),
+                          color: Colors.black.withValues(alpha: 0.18),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
@@ -1255,7 +1253,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.92),
+                    color: Colors.white.withValues(alpha: 0.92),
                     borderRadius:
                         BorderRadius.circular(AppDimensions.radiusFull),
                     boxShadow: const [
@@ -1269,7 +1267,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('â¤ï¸', style: TextStyle(fontSize: 9)),
+                      const Text('Ã¢ÂÂ¤Ã¯Â¸Â', style: TextStyle(fontSize: 9)),
                       const SizedBox(width: 3),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 66),
@@ -1306,7 +1304,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
             ),
           ),
 
-          // Comic Bubble for Sleep (Zzz... ðŸ’¤), Food (ðŸŸ), or Social Chat (â¤ï¸/ðŸ¾/â“/ðŸŽµ)
+          // Comic Bubble for Sleep (Zzz... Ã°Å¸â€™Â¤), Food (Ã°Å¸ÂÅ¸), or Social Chat (Ã¢ÂÂ¤Ã¯Â¸Â/Ã°Å¸ÂÂ¾/Ã¢Ââ€œ/Ã°Å¸Å½Âµ)
           if (_bubbleText != null)
             Positioned(
               top: _behavior == _CatLoopBehavior.furnitureSleep ? -22 : -18,
@@ -1369,7 +1367,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                       left: 16 - (t * 8),
                       child: Opacity(
                         opacity: opacity,
-                        child: const Text('â¤ï¸', style: TextStyle(fontSize: 16)),
+                        child: const Text('Ã¢ÂÂ¤Ã¯Â¸Â', style: TextStyle(fontSize: 16)),
                       ),
                     ),
                     Positioned(
@@ -1377,7 +1375,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                       right: 14 - (t * 6),
                       child: Opacity(
                         opacity: opacity,
-                        child: const Text('ðŸ’–', style: TextStyle(fontSize: 14)),
+                        child: const Text('Ã°Å¸â€™â€“', style: TextStyle(fontSize: 14)),
                       ),
                     ),
                   ],

@@ -99,8 +99,8 @@ class _TameSplashScreenState extends State<TameSplashScreen>
                 center: Alignment.center,
                 radius: 0.82,
                 colors: [
-                  AppColors.gameSunburst.withOpacity(0.88),
-                  AppColors.gameSunburst.withOpacity(0.18),
+                  AppColors.gameSunburst.withValues(alpha: 0.88),
+                  AppColors.gameSunburst.withValues(alpha: 0.18),
                   Colors.transparent,
                 ],
               ),
@@ -115,7 +115,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
                 angle: _sunburstController.value * 2 * math.pi,
                 child: CustomPaint(
                   painter: _SunburstPainter(
-                    rayColor: AppColors.gameSunburst.withOpacity(0.42),
+                    rayColor: AppColors.gameSunburst.withValues(alpha: 0.42),
                   ),
                 ),
               );
@@ -131,7 +131,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
               child: Icon(
                 Icons.pets_rounded,
                 size: 32,
-                color: AppColors.gameSplashText.withOpacity(0.16),
+                color: AppColors.gameSplashText.withValues(alpha: 0.16),
               ),
             ),
           ),
@@ -141,7 +141,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
             child: Icon(
               Icons.star_border_rounded,
               size: 30,
-              color: Colors.white.withOpacity(0.45),
+              color: Colors.white.withValues(alpha: 0.45),
             ),
           ),
           Positioned(
@@ -152,7 +152,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
               child: Icon(
                 Icons.pets_rounded,
                 size: 38,
-                color: Colors.white.withOpacity(0.28),
+                color: Colors.white.withValues(alpha: 0.28),
               ),
             ),
           ),
@@ -164,7 +164,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
               child: Icon(
                 Icons.pets_rounded,
                 size: 26,
-                color: AppColors.gameSplashText.withOpacity(0.14),
+                color: AppColors.gameSplashText.withValues(alpha: 0.14),
               ),
             ),
           ),
@@ -209,7 +209,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.gameSplashText.withOpacity(0.22),
+                color: AppColors.gameSplashText.withValues(alpha: 0.22),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -254,7 +254,7 @@ class _TameSplashScreenState extends State<TameSplashScreen>
             'Jinakkan\nKucing!',
             textAlign: TextAlign.center,
             style: baseStyle.copyWith(
-              color: const Color(0xFF9A3412).withOpacity(0.45),
+              color: const Color(0xFF9A3412).withValues(alpha: 0.45),
             ),
           ),
         ),

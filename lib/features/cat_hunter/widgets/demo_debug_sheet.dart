@@ -137,7 +137,7 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
             ),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
-              value: _selectedCatId,
+              initialValue: _selectedCatId,
               isExpanded: true,
               decoration: InputDecoration(
                 contentPadding:
