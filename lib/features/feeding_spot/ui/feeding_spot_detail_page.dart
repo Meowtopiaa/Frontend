@@ -126,6 +126,9 @@ class _FeedingSpotDetailPageState extends State<FeedingSpotDetailPage> {
                   spots: provider.spots,
                   selectedId: spot.id,
                   isDemo: provider.isDemo,
+                  heatmapPoints: provider.heatmapPoints,
+                  showHeatmap: provider.showHeatmap,
+                  onToggleHeatmap: provider.toggleHeatmap,
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -151,11 +154,16 @@ class _FeedingSpotDetailPageState extends State<FeedingSpotDetailPage> {
                               onPressed: () => Navigator.pop(dialog),
                             ),
                           ),
-                          body: CampusSpotMap(
-                            spots: provider.spots,
-                            selectedId: spot.id,
-                            isDemo: provider.isDemo,
-                            isFullScreen: true,
+                          body: Consumer<FeedingSpotProvider>(
+                            builder: (_, liveProvider, __) => CampusSpotMap(
+                              spots: liveProvider.spots,
+                              selectedId: spot.id,
+                              isDemo: liveProvider.isDemo,
+                              isFullScreen: true,
+                              heatmapPoints: liveProvider.heatmapPoints,
+                              showHeatmap: liveProvider.showHeatmap,
+                              onToggleHeatmap: liveProvider.toggleHeatmap,
+                            ),
                           ),
                         ),
                       ),

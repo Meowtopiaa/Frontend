@@ -36,6 +36,8 @@ final List<RouteBase> feedingFlowRoutes = [
     path: '/feeding/scan',
     builder: (context, state) => ScanSpotPage(
       expectedSpotId: state.uri.queryParameters['spot_id'],
+      initialCatId: state.uri.queryParameters['cat_id'],
+      initialQrToken: state.uri.queryParameters['qr_token'],
     ),
   ),
   GoRoute(

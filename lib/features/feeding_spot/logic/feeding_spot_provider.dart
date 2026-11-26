@@ -17,6 +17,7 @@ class FeedingSpotProvider extends ChangeNotifier {
   }) : _service = service ?? FeedingSpotService() {
     if (isDemo) {
       _spots = demoFeedingSpots(DateTime.now());
+      _heatmapPoints = spots.map(FeedingHeatmapPoint.fromSpot).toList();
       _history.addAll(demoFeedingHistory(_spots, DateTime.now()));
       _loaded = true;
       _sortSpotsClientSide();
@@ -26,21 +27,37 @@ class FeedingSpotProvider extends ChangeNotifier {
   final bool isDemo;
   final FeedingSpotService _service;
   List<FeedingSpotModel> _spots = [];
+  List<FeedingHeatmapPoint> _heatmapPoints = [];
   final List<FeedingSubmission> _history = [];
   final Set<String> _favorites = {};
   final Map<String, DateTime> _lastSubmitted = {};
   FeedingSession? session;
   bool _isLoading = false;
   bool _isLoadingHistory = false;
+  bool _isLoadingHeatmap = false;
+  bool _showHeatmap = false;
   bool _loaded = false;
   String? _errorMessage;
 
   List<FeedingSpotModel> get spots => List.unmodifiable(
     _spots.where((s) => s.status.toLowerCase() != 'inactive'),
   );
+  List<FeedingHeatmapPoint> get heatmapPoints {
+    final visibleIds = spots.map((s) => s.id).toSet();
+    if (_heatmapPoints.isNotEmpty) {
+      return List.unmodifiable(
+        _heatmapPoints.where(
+          (p) => visibleIds.isEmpty || visibleIds.contains(p.spotId),
+        ),
+      );
+    }
+    return List.unmodifiable(spots.map(FeedingHeatmapPoint.fromSpot));
+  }
   List<FeedingSubmission> get history => List.unmodifiable(_history);
   bool get isLoading => _isLoading;
   bool get isLoadingHistory => _isLoadingHistory;
+  bool get isLoadingHeatmap => _isLoadingHeatmap;
+  bool get showHeatmap => _showHeatmap;
   String? get errorMessage => _errorMessage;
   int get pendingCount =>
       _history.where((s) => s.status == FeedingStatus.underReview).length;
@@ -52,6 +69,37 @@ class FeedingSpotProvider extends ChangeNotifier {
   void toggleFavorite(String id) {
     if (!_favorites.add(id)) _favorites.remove(id);
     notifyListeners();
+  }
+
+  void toggleHeatmap([bool? value]) {
+    _showHeatmap = value ?? !_showHeatmap;
+    notifyListeners();
+    if (_showHeatmap && _heatmapPoints.isEmpty) {
+      fetchHeatmap();
+    }
+  }
+
+  Future<void> fetchHeatmap({int days = 14}) async {
+    if (_isLoadingHeatmap) return;
+    _isLoadingHeatmap = true;
+    notifyListeners();
+    try {
+      final remote = await _service.getHeatmap(days: days);
+      if (remote.isNotEmpty) {
+        _heatmapPoints = remote;
+      } else {
+        _heatmapPoints = spots
+            .map((s) => FeedingHeatmapPoint.fromSpot(s, windowDays: days))
+            .toList();
+      }
+    } catch (_) {
+      _heatmapPoints = spots
+          .map((s) => FeedingHeatmapPoint.fromSpot(s, windowDays: days))
+          .toList();
+    } finally {
+      _isLoadingHeatmap = false;
+      notifyListeners();
+    }
   }
 
   FeedingSpotModel? spotById(String id) {
@@ -92,6 +140,7 @@ class FeedingSpotProvider extends ChangeNotifier {
         }
       }
       await _sortSpotsClientSide();
+      await fetchHeatmap();
       _loaded = true;
     } catch (e) {
       _errorMessage = _extractErrorMessage(e);
@@ -174,6 +223,7 @@ class FeedingSpotProvider extends ChangeNotifier {
   Future<FeedingSession> openSession(
     String rawToken, {
     String? expectedSpotId,
+    String? catId,
   }) async {
     final token = rawToken.trim();
     if (token.isEmpty) throw StateError('Masukkan token QR spot yang valid.');
@@ -225,6 +275,9 @@ class FeedingSpotProvider extends ChangeNotifier {
           intentDeadlineAt: intentDeadlineAt,
           finalizeDeadlineAt: finalizeDeadlineAt,
         );
+        if (catId != null && catId.trim().isNotEmpty) {
+          session!.catId = catId.trim();
+        }
         notifyListeners();
         return session!;
       } catch (e) {
@@ -288,6 +341,9 @@ class FeedingSpotProvider extends ChangeNotifier {
       startedAt: now,
       expiresAt: now.add(const Duration(minutes: 15)),
     );
+    if (catId != null && catId.trim().isNotEmpty) {
+      session!.catId = catId.trim();
+    }
     notifyListeners();
     return session!;
   }
