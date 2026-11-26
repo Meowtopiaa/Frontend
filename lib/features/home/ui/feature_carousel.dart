@@ -35,7 +35,7 @@ class _FeatureCarouselState extends State<FeatureCarousel>
     ),
     (
       feature: AppFeature.hunter,
-      eyebrow: 'CAT HUNTER',
+      eyebrow: 'MEOWTOPIA GAME',
       title: 'Jelajahi kampus.\nTemukan ceritanya.',
       action: 'Mulai penjelajahan',
       image: 'assets/images/figma/feeding-shelter.png',

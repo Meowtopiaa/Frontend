@@ -2,11 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_assets.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
+import '../../logic/cat_hunter_provider.dart';
 import '../../widgets/app_header_bar.dart';
-import '../../cat_dex/data/repositories/mock_cat_repository.dart';
 import '../models/territory_model.dart';
 import 'territory_detail_screen.dart';
 
@@ -334,31 +335,43 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: MockCatRepository(),
-      builder: (context, _) {
-        final repo = MockCatRepository();
-        final territories = repo.territories;
-        final resolvedTime = _resolveTimeOfDay();
+    final provider = context.watch<CatHunterProvider>();
+    final territories = provider.territories;
+    final resolvedTime = _resolveTimeOfDay();
 
-        return Scaffold(
-          backgroundColor: AppColors.scaffoldBg(context),
-          appBar: const AppHeaderBar(
-            title: 'Peta Teritorial Kucing',
-            subtitle: 'TelCat World Ã¢â‚¬Â¢ Kampus Tel-U',
-            statusText: '4 Zona',
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppDimensions.marginHorizontal,
-                AppDimensions.spaceMd,
-                AppDimensions.marginHorizontal,
-                84,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg(context),
+      appBar: AppHeaderBar(
+        title: 'Peta Teritorial Kucing',
+        subtitle: 'TelCat World • Kampus Tel-U',
+        statusText: '${territories.length} Zona',
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => provider.loadAll(force: true),
+          color: AppColors.primaryOf(context),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.marginHorizontal,
+              AppDimensions.spaceMd,
+              AppDimensions.marginHorizontal,
+              96,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (provider.isLoading)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: LinearProgressIndicator(
+                      minHeight: 2.5,
+                      backgroundColor: AppColors.subtleBg(context),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primaryOf(context),
+                      ),
+                    ),
+                  ),
                   // 1:1 Interactive Campus Map Card
                   Container(
                     decoration: BoxDecoration(
@@ -452,7 +465,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                                       height: 4,
                                                       decoration: BoxDecoration(
                                                         color: Colors.black
-                                                            .withValues(alpha: 0.18),
+                                                            .withOpacity(0.18),
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(4),
@@ -477,9 +490,9 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                               color: resolvedTime ==
                                                       _ResolvedTimeOfDay.dusk
                                                   ? Colors.deepOrange
-                                                      .withValues(alpha: 0.16)
+                                                      .withOpacity(0.16)
                                                   : const Color(0xFF1A237E)
-                                                      .withValues(alpha: 0.28),
+                                                      .withOpacity(0.28),
                                             ),
                                           ),
                                         ),
@@ -508,10 +521,10 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                                         colors: [
                                                           const Color(
                                                                   0xFFFFE082)
-                                                              .withValues(alpha: 0.85 * glow),
+                                                              .withOpacity(0.85 * glow),
                                                           const Color(
                                                                   0xFFFFB300)
-                                                              .withValues(alpha: 0.25 * glow),
+                                                              .withOpacity(0.25 * glow),
                                                           Colors.transparent,
                                                         ],
                                                       ),
@@ -601,7 +614,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                                                   Border.all(
                                                                 color: AppColors
                                                                     .primary
-                                                                    .withValues(alpha: 1 - p),
+                                                                    .withOpacity(1 - p),
                                                                 width: 2.2,
                                                               ),
                                                             ),
@@ -620,8 +633,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                           (index) {
                                         final territory = territories[index];
                                         final hasUnscannedCat =
-                                            territory.residentCatIds.any((id) =>
-                                                !repo.isScannedToday(id));
+                                            territory.hasUnvisitedCatToday;
                                         final chatterText =
                                             _zoneChatterOptions[index %
                                                 _zoneChatterOptions.length];
@@ -683,7 +695,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                                   horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
                                 color:
-                                    AppColors.cardBg(context).withValues(alpha: 0.92),
+                                    AppColors.cardBg(context).withOpacity(0.92),
                                 borderRadius: BorderRadius.circular(
                                     AppDimensions.radiusFull),
                                 boxShadow: const [
@@ -718,7 +730,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                             top: 12,
                             right: 12,
                             child: Material(
-                              color: AppColors.cardBg(context).withValues(alpha: 0.92),
+                              color: AppColors.cardBg(context).withOpacity(0.92),
                               borderRadius: BorderRadius.circular(
                                   AppDimensions.radiusFull),
                               elevation: 2,
@@ -793,9 +805,8 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
               ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
   }
 
   Widget _buildCloud({
@@ -817,7 +828,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
             borderRadius: BorderRadius.circular(width),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.55),
+                color: Colors.white.withOpacity(0.55),
                 blurRadius: 12,
                 spreadRadius: 3,
               ),
@@ -1037,7 +1048,7 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              '${territory.residentCatIds.length} Kucing Penghuni',
+                              '${territory.residentCatIds.isNotEmpty ? territory.residentCatIds.length : territory.activeCatsCount} Kucing Penghuni',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,

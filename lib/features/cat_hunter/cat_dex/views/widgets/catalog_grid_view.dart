@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_dimensions.dart';
+import '../../../logic/cat_hunter_provider.dart';
 import '../../data/models/cat_model.dart';
-import '../../data/repositories/mock_cat_repository.dart';
 import 'catbook_polaroid_modal.dart';
 
 enum CatalogFilter {
@@ -28,10 +30,13 @@ class _CatalogGridViewState extends State<CatalogGridView> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = MockCatRepository();
-    final allCats = repo.allCats;
-    final collectedCount = repo.collectedCats.length;
+    final provider = context.watch<CatHunterProvider>();
+    final allCats = provider.allCats;
+    final collectedCats = provider.collectedCats;
+    final uncollectedCats = provider.uncollectedCats;
+    final collectedCount = collectedCats.length;
     final totalCount = allCats.length;
+    final progressRatio = totalCount == 0 ? 0.0 : collectedCount / totalCount;
 
     List<CatModel> displayedCats;
     switch (_selectedFilter) {
@@ -39,110 +44,139 @@ class _CatalogGridViewState extends State<CatalogGridView> {
         displayedCats = allCats;
         break;
       case CatalogFilter.collected:
-        displayedCats = repo.collectedCats;
+        displayedCats = collectedCats;
         break;
       case CatalogFilter.uncollected:
-        displayedCats = repo.uncollectedCats;
+        displayedCats = uncollectedCats;
         break;
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.marginHorizontal,
-        vertical: AppDimensions.spaceMd,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Collection Progress Card
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.spaceMd),
-            decoration: BoxDecoration(
-              color: AppColors.cardBg(context),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-              border: Border.all(color: AppColors.borderOf(context)),
-              boxShadow: AppDimensions.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '$collectedCount dari $totalCount Kucing Kampus',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimaryOf(context),
+    return RefreshIndicator(
+      onRefresh: () => provider.refreshCatalog(),
+      color: AppColors.primaryOf(context),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppDimensions.marginHorizontal,
+          AppDimensions.spaceMd,
+          AppDimensions.marginHorizontal,
+          96,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Collection Progress Card
+            Container(
+              padding: const EdgeInsets.all(AppDimensions.spaceMd),
+              decoration: BoxDecoration(
+                color: AppColors.cardBg(context),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                border: Border.all(color: AppColors.borderOf(context)),
+                boxShadow: AppDimensions.cardShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '$collectedCount dari $totalCount Kucing Kampus',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimaryOf(context),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${((collectedCount / totalCount) * 100).toInt()}%',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryOf(context),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(progressRatio * 100).toInt()}%',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryOf(context),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: collectedCount / totalCount,
-                    minHeight: 8,
-                    backgroundColor: AppColors.subtleBg(context),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primaryOf(context),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progressRatio,
+                      minHeight: 8,
+                      backgroundColor: AppColors.subtleBg(context),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primaryOf(context),
+                      ),
                     ),
                   ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppDimensions.spaceMd),
+
+            // Filter Chips Row
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('Semua ($totalCount)', CatalogFilter.all),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                      'Terkoleksi ($collectedCount)', CatalogFilter.collected),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    'Belum Ditemukan (${totalCount - collectedCount})',
+                    CatalogFilter.uncollected,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppDimensions.spaceMd),
+
+            // 2-Column Grid
+            if (displayedCats.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg(context),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                  border: Border.all(color: AppColors.borderOf(context)),
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppDimensions.spaceMd),
-
-          // Filter Chips Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildFilterChip('Semua ($totalCount)', CatalogFilter.all),
-                const SizedBox(width: 8),
-                _buildFilterChip('Terkoleksi ($collectedCount)', CatalogFilter.collected),
-                const SizedBox(width: 8),
-                _buildFilterChip('Belum Ditemukan (${totalCount - collectedCount})', CatalogFilter.uncollected),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppDimensions.spaceMd),
-
-          // 2-Column Grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: displayedCats.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.72,
-            ),
-            itemBuilder: (context, index) {
-              final cat = displayedCats[index];
-              return _buildCatCard(context, cat);
-            },
-          ),
-        ],
+                child: Text(
+                  'Belum ada kucing pada filter ini.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondaryOf(context),
+                  ),
+                ),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: displayedCats.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.72,
+                ),
+                itemBuilder: (context, index) {
+                  final cat = displayedCats[index];
+                  return _buildCatCard(context, cat);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -162,7 +196,8 @@ class _CatalogGridViewState extends State<CatalogGridView> {
           color: isSelected ? primary : AppColors.cardBg(context),
           borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
           border: Border.all(
-            color: isSelected ? primary : AppColors.borderInteractiveOf(context),
+            color:
+                isSelected ? primary : AppColors.borderInteractiveOf(context),
           ),
         ),
         child: Text(
@@ -170,7 +205,8 @@ class _CatalogGridViewState extends State<CatalogGridView> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isSelected ? Colors.white : AppColors.textPrimaryOf(context),
+            color:
+                isSelected ? Colors.white : AppColors.textPrimaryOf(context),
           ),
         ),
       ),
@@ -210,13 +246,17 @@ class _CatalogGridViewState extends State<CatalogGridView> {
                       shape: BoxShape.circle,
                       color: AppColors.catAvatarBgOf(context),
                       border: Border.all(
-                        color: AppColors.primaryOf(context).withValues(alpha: cat.variant == CatVariant.hitam && isDark ? 0.55 : 0.3,),
+                        color: AppColors.primaryOf(context).withOpacity(
+                          cat.variant == CatVariant.hitam && isDark
+                              ? 0.55
+                              : 0.3,
+                        ),
                         width: 2,
                       ),
                       boxShadow: cat.variant == CatVariant.hitam && isDark
                           ? [
                               BoxShadow(
-                                color: AppColors.darkPrimary.withValues(alpha: 0.18),
+                                color: AppColors.darkPrimary.withOpacity(0.18),
                                 blurRadius: 10,
                                 spreadRadius: 1,
                               ),
@@ -254,7 +294,8 @@ class _CatalogGridViewState extends State<CatalogGridView> {
               ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: cat.isNameLocked
                       ? AppColors.sweetSpotGreenBg
@@ -301,7 +342,8 @@ class _CatalogGridViewState extends State<CatalogGridView> {
       // Uncollected Card (Dark Silhouette & Question mark)
       return Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF0F0F3),
+          color:
+              isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF0F0F3),
           borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
           border: Border.all(color: AppColors.borderOf(context), width: 1),
         ),
@@ -309,7 +351,6 @@ class _CatalogGridViewState extends State<CatalogGridView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dark Silhouette Avatar with ???
             Expanded(
               child: Center(
                 child: Stack(
@@ -333,10 +374,12 @@ class _CatalogGridViewState extends State<CatalogGridView> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius:
+                            BorderRadius.circular(AppDimensions.radiusFull),
                       ),
                       child: const Text(
                         '???',
@@ -382,7 +425,8 @@ class _CatalogGridViewState extends State<CatalogGridView> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.qr_code_rounded, size: 12, color: AppColors.primary),
+                  Icon(Icons.qr_code_rounded,
+                      size: 12, color: AppColors.primary),
                   SizedBox(width: 4),
                   Text(
                     'Pindai QR',

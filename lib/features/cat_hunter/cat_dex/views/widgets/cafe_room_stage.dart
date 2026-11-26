@@ -558,7 +558,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: widget.theme == CafeTheme.night ? 0.22 : 0.08,),
+                          Colors.black.withOpacity(widget.theme == CafeTheme.night ? 0.22 : 0.08),
                         ],
                       ),
                     ),
@@ -584,11 +584,11 @@ class CafeRoomStageState extends State<CafeRoomStage>
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.90),
+                          color: Colors.white.withOpacity(0.90),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.swipeHalo.withValues(alpha: 0.75),
+                              color: AppColors.swipeHalo.withOpacity(0.75),
                               blurRadius: 14,
                               spreadRadius: 2,
                             ),
@@ -688,7 +688,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF1744).withValues(alpha: 0.85),
+                            color: const Color(0xFFFF1744).withOpacity(0.85),
                             blurRadius: 16,
                             spreadRadius: 5,
                           ),
@@ -1227,11 +1227,11 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
               height: _isDragging ? 14 : 10,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(100),
-                color: Colors.black.withValues(alpha: _isDragging ? 0.14 : 0.16),
+                color: Colors.black.withOpacity(_isDragging ? 0.14 : 0.16),
                 boxShadow: _isDragging
                     ? [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
+                          color: Colors.black.withOpacity(0.18),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
@@ -1253,7 +1253,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.92),
+                    color: Colors.white.withOpacity(0.92),
                     borderRadius:
                         BorderRadius.circular(AppDimensions.radiusFull),
                     boxShadow: const [

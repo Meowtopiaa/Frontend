@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
+import '../../logic/cat_hunter_provider.dart';
 import '../../widgets/app_header_bar.dart';
-import '../data/repositories/mock_cat_repository.dart';
 import 'widgets/cafe_sanctuary_view.dart';
 import 'widgets/catalog_grid_view.dart';
 import 'widgets/catbook_polaroid_modal.dart';
@@ -29,10 +31,13 @@ class _CatDexTabScreenState extends State<CatDexTabScreen> {
     super.initState();
     _selectedTab = widget.initialTabIndex;
 
-    if (widget.openCatProfileId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final cat = MockCatRepository().getCatById(widget.openCatProfileId!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<CatHunterProvider>();
+      provider.loadAll();
+
+      if (widget.openCatProfileId != null) {
+        final cat = provider.getCatById(widget.openCatProfileId!);
         showDialog<void>(
           context: context,
           builder: (_) => CatbookPolaroidModal(
@@ -46,187 +51,193 @@ class _CatDexTabScreenState extends State<CatDexTabScreen> {
             },
           ),
         );
-      });
-    }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: MockCatRepository(),
-      builder: (context, _) {
-        return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          appBar: AppHeaderBar(
-            title: 'Kucing Kampus',
-            subtitle: _selectedTab == 0
-                ? 'TelCat World â€¢ Kafe Kucing'
-                : 'TelCat World â€¢ Katalog Cat-Dex',
-            statusText: 'Koleksi',
-          ),
-          body: Column(
-            children: [
-              // Segmented Tab Switcher
-              Container(
-                margin: const EdgeInsets.fromLTRB(
-                  AppDimensions.marginHorizontal,
-                  12,
-                  AppDimensions.marginHorizontal,
-                  4,
-                ),
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.subtleBg(context),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusButton),
-                  border: Border.all(color: AppColors.borderOf(context)),
-                ),
-                child: Row(
-                  children: [
-                    // Tab 1: Kafe Kucing
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedTab = 0;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _selectedTab == 0
-                                ? AppColors.primary
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: _selectedTab == 0
-                                ? const [
-                                    BoxShadow(
-                                      color: Color.fromRGBO(242, 106, 27, 0.3),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
-                                    )
-                                  ]
-                                : null,
+    final provider = context.watch<CatHunterProvider>();
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppHeaderBar(
+        title: 'Kucing Kampus',
+        subtitle: _selectedTab == 0
+            ? 'TelCat World • Kafe Kucing'
+            : 'TelCat World • Katalog Cat-Dex',
+        statusText: provider.isOfflineFallback ? 'Mode Demo' : 'Koleksi',
+      ),
+      body: Column(
+        children: [
+          if (provider.isLoading)
+            LinearProgressIndicator(
+              minHeight: 2.5,
+              backgroundColor: AppColors.subtleBg(context),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                AppColors.primaryOf(context),
+              ),
+            ),
+
+          // Segmented Tab Switcher
+          Container(
+            margin: const EdgeInsets.fromLTRB(
+              AppDimensions.marginHorizontal,
+              12,
+              AppDimensions.marginHorizontal,
+              4,
+            ),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.subtleBg(context),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusButton),
+              border: Border.all(color: AppColors.borderOf(context)),
+            ),
+            child: Row(
+              children: [
+                // Tab 1: Kafe Kucing
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTab = 0;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _selectedTab == 0
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: _selectedTab == 0
+                            ? const [
+                                BoxShadow(
+                                  color: Color.fromRGBO(242, 106, 27, 0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '☕',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: _selectedTab == 0
+                                  ? Colors.white
+                                  : AppColors.textSecondaryOf(context),
+                            ),
                           ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                                Text(
-                                'â˜•',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: _selectedTab == 0
-                                      ? Colors.white
-                                      : AppColors.textSecondaryOf(context),
-                                ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Kafe Kucing',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedTab == 0
+                                    ? Colors.white
+                                    : AppColors.textSecondaryOf(context),
                               ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'Kafe Kucing',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: _selectedTab == 0
-                                        ? Colors.white
-                                        : AppColors.textSecondaryOf(context),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
+                  ),
+                ),
 
-                    // Tab 2: Katalog Cat-Dex
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedTab = 1;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _selectedTab == 1
-                                ? AppColors.primary
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: _selectedTab == 1
-                                ? const [
-                                    BoxShadow(
-                                      color: Color.fromRGBO(242, 106, 27, 0.3),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
-                                    )
-                                  ]
-                                : null,
+                // Tab 2: Katalog Cat-Dex
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTab = 1;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _selectedTab == 1
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: _selectedTab == 1
+                            ? const [
+                                BoxShadow(
+                                  color: Color.fromRGBO(242, 106, 27, 0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '📋',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: _selectedTab == 1
+                                  ? Colors.white
+                                  : AppColors.textSecondaryOf(context),
+                            ),
                           ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'ðŸ“‹',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: _selectedTab == 1
-                                      ? Colors.white
-                                      : AppColors.textSecondaryOf(context),
-                                ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Katalog Cat-Dex',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedTab == 1
+                                    ? Colors.white
+                                    : AppColors.textSecondaryOf(context),
                               ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'Katalog Cat-Dex',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: _selectedTab == 1
-                                        ? Colors.white
-                                        : AppColors.textSecondaryOf(context),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-
-              // Active Tab Content
-              Expanded(
-                child: _selectedTab == 0
-                    ? CafeSanctuaryView(
-                        onSwitchToCatalog: () {
-                          setState(() {
-                            _selectedTab = 1;
-                          });
-                        },
-                      )
-                    : CatalogGridView(
-                        onVisitInCafe: () {
-                          setState(() {
-                            _selectedTab = 0;
-                          });
-                        },
-                      ),
-              ),
-            ],
+              ],
+            ),
           ),
-        );
-      },
+
+          // Active Tab Content
+          Expanded(
+            child: _selectedTab == 0
+                ? CafeSanctuaryView(
+                    onSwitchToCatalog: () {
+                      setState(() {
+                        _selectedTab = 1;
+                      });
+                    },
+                  )
+                : CatalogGridView(
+                    onVisitInCafe: () {
+                      setState(() {
+                        _selectedTab = 0;
+                      });
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

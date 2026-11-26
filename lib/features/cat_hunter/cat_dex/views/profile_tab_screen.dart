@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
+import '../../logic/cat_hunter_provider.dart';
 import '../../theme/theme_controller.dart';
 import '../../widgets/app_header_bar.dart';
 import '../../widgets/demo_debug_sheet.dart';
 import '../data/models/cat_model.dart';
-import '../data/repositories/mock_cat_repository.dart';
 
 class _ProfileMedal {
   final String id;
@@ -33,22 +34,48 @@ class _ProfileMedal {
 class ProfileTabScreen extends StatelessWidget {
   const ProfileTabScreen({super.key});
 
-  String _resolveDynamicTitle(int totalEncounters) {
-    if (totalEncounters >= 15) {
-      return 'Pawang Kucing Tel-U';
+  IconData _iconForMedal(String id) {
+    switch (id) {
+      case 'medal_bestie':
+        return Icons.workspace_premium_rounded;
+      case 'medal_explorer':
+        return Icons.explore_rounded;
+      case 'medal_pawang':
+        return Icons.auto_awesome_rounded;
+      case 'medal_namer':
+        return Icons.badge_rounded;
+      case 'medal_collector':
+        return Icons.pets_rounded;
+      case 'medal_veteran':
+        return Icons.favorite_rounded;
+      default:
+        return Icons.emoji_events_rounded;
     }
-    if (totalEncounters >= 5) {
-      return 'Sahabat Kucing Kampus';
-    }
-    return 'Pendatang Baru';
   }
 
-  List<_ProfileMedal> _buildMedals(MockCatRepository repo) {
-    final encounteredCount = repo.encounteredCats.length;
-    final totalCatsCount = repo.allCats.length;
-    final maxEncounter = repo.maxEncounterCount;
-    final totalEncounters = repo.totalEncounters;
-    final lockedNamesCount = repo.lockedNamesCount;
+  List<_ProfileMedal> _buildMedals(CatHunterProvider provider) {
+    final serverMedals = provider.profile?.medals;
+    if (serverMedals != null && serverMedals.isNotEmpty) {
+      return serverMedals
+          .map(
+            (m) => _ProfileMedal(
+              id: m.id,
+              title: m.title,
+              description: m.description,
+              icon: _iconForMedal(m.id),
+              current: m.current,
+              target: m.target,
+            ),
+          )
+          .toList();
+    }
+
+    final encounteredCount = provider.encounteredCats.length;
+    final totalCatsCount =
+        provider.allCats.isNotEmpty ? provider.allCats.length : 1;
+    final maxEncounter = provider.maxEncounterCount;
+    final totalEncounters = provider.totalEncounters;
+    final lockedNamesCount = provider.lockedNamesCount;
 
     return [
       _ProfileMedal(
@@ -111,7 +138,7 @@ class ProfileTabScreen extends StatelessWidget {
   void _showCapstoneInfoDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.cardBg(dialogContext),
         shape: RoundedRectangleBorder(
@@ -176,9 +203,11 @@ class ProfileTabScreen extends StatelessWidget {
     );
   }
 
-  void _showAvatarPickerSheet(BuildContext context, MockCatRepository repo) {
-    final metCats = repo.encounteredCats;
-    final selectedId = repo.selectedAvatarCat?.id;
+  void _showAvatarPickerSheet(
+      BuildContext context, CatHunterProvider provider) {
+    final metCats = provider.encounteredCats;
+    final selectedId = provider.selectedAvatarCat?.id;
+    final messenger = ScaffoldMessenger.of(context);
 
     showModalBottomSheet<void>(
       context: context,
@@ -258,9 +287,28 @@ class ProfileTabScreen extends StatelessWidget {
                         return InkWell(
                           borderRadius:
                               BorderRadius.circular(AppDimensions.radiusCard),
-                          onTap: () {
-                            repo.selectProfileAvatar(cat.id);
+                          onTap: () async {
                             Navigator.of(sheetContext).pop();
+                            final err =
+                                await provider.setFavoriteAvatar(cat.id);
+                            if (err != null) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(err),
+                                  backgroundColor: AppColors.missRed,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } else {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Avatar profil diubah ke ${cat.name}!',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.all(8),
@@ -360,7 +408,7 @@ class ProfileTabScreen extends StatelessWidget {
 
     showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: Colors.black.withOpacity(0.55),
       builder: (dialogContext) => Dialog(
         backgroundColor: AppColors.cardBg(dialogContext),
         shape: RoundedRectangleBorder(
@@ -394,7 +442,7 @@ class ProfileTabScreen extends StatelessWidget {
                       BorderRadius.circular(AppDimensions.radiusFull),
                   border: Border.all(
                     color: unlocked
-                        ? AppColors.sweetSpotGreen.withValues(alpha: 0.4)
+                        ? AppColors.sweetSpotGreen.withOpacity(0.4)
                         : AppColors.borderInteractiveOf(dialogContext),
                   ),
                 ),
@@ -477,7 +525,7 @@ class ProfileTabScreen extends StatelessWidget {
         boxShadow: unlocked
             ? [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.28),
+                  color: AppColors.primary.withOpacity(0.28),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -513,70 +561,82 @@ class ProfileTabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: MockCatRepository(),
-      builder: (context, _) {
-        final repo = MockCatRepository();
-        final collected = repo.collectedCats.length;
-        final totalEncounters = repo.totalEncounters;
-        final dynamicTitle = _resolveDynamicTitle(totalEncounters);
-        final CatModel? bestBuddy = repo.bestBuddyCat;
-        final medals = _buildMedals(repo);
+    final provider = context.watch<CatHunterProvider>();
+    final collected = provider.totalCatsCollected;
+    final totalEncounters = provider.totalEncounters;
+    final dynamicTitle = provider.dynamicTitle;
+    final CatModel? bestBuddy = provider.bestBuddyCat;
+    final medals = _buildMedals(provider);
 
-        return Scaffold(
-          backgroundColor: AppColors.scaffoldBg(context),
-          appBar: AppHeaderBar(
-            title: 'Profil Pengguna',
-            subtitle: 'TelCat World Ã¢â‚¬Â¢ Civitas Akademika',
-            statusText: 'Terverifikasi',
-            onTitleHoldTwoSeconds: () => showDemoDebugSheet(context),
-            onInfoPressed: () => _showCapstoneInfoDialog(context),
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppDimensions.marginHorizontal,
-                AppDimensions.spaceMd,
-                AppDimensions.marginHorizontal,
-                84,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // User Profile Hero Card
-                  Container(
-                    padding: const EdgeInsets.all(AppDimensions.spaceLg),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(context),
-                      borderRadius:
-                          BorderRadius.circular(AppDimensions.radiusCard),
-                      border: Border.all(color: AppColors.borderOf(context)),
-                      boxShadow: AppDimensions.cardShadow,
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg(context),
+      appBar: AppHeaderBar(
+        title: 'Profil Pengguna',
+        subtitle: 'TelCat World • Civitas Akademika',
+        statusText: provider.isOfflineFallback ? 'Mode Demo' : 'Terverifikasi',
+        onTitleHoldTwoSeconds: () => showDemoDebugSheet(context),
+        onInfoPressed: () => _showCapstoneInfoDialog(context),
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => provider.refreshProfile(),
+          color: AppColors.primaryOf(context),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.marginHorizontal,
+              AppDimensions.spaceMd,
+              AppDimensions.marginHorizontal,
+              96,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (provider.isLoading)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: LinearProgressIndicator(
+                      minHeight: 2.5,
+                      backgroundColor: AppColors.subtleBg(context),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primaryOf(context),
+                      ),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Interactive Cat Avatar with Edit Badge
-                        GestureDetector(
-                          onTap: () => _showAvatarPickerSheet(context, repo),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 68,
-                                height: 68,
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.catAvatarBgOf(context),
-                                  border: Border.all(
-                                    color: AppColors.primaryOf(context),
-                                    width: 2.2,
-                                  ),
+                  ),
+                // User Profile Hero Card
+                Container(
+                  padding: const EdgeInsets.all(AppDimensions.spaceLg),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg(context),
+                    borderRadius:
+                        BorderRadius.circular(AppDimensions.radiusCard),
+                    border: Border.all(color: AppColors.borderOf(context)),
+                    boxShadow: AppDimensions.cardShadow,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Interactive Cat Avatar with Edit Badge
+                      GestureDetector(
+                        onTap: () => _showAvatarPickerSheet(context, provider),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.catAvatarBgOf(context),
+                                border: Border.all(
+                                  color: AppColors.primaryOf(context),
+                                  width: 2.2,
                                 ),
-                                child: ClipOval(
-                                  child: Image.asset(
-                                    repo.selectedProfileAvatarAsset,
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  provider.selectedProfileAvatarAsset,
                                     fit: BoxFit.contain,
                                     errorBuilder: (_, __, ___) => Icon(
                                       Icons.pets_rounded,
@@ -667,7 +727,7 @@ class ProfileTabScreen extends StatelessWidget {
                                   ),
                                   border: Border.all(
                                     color: AppColors.primaryOf(context)
-                                        .withValues(alpha: 0.28),
+                                        .withOpacity(0.28),
                                   ),
                                 ),
                                 child: Row(
@@ -789,7 +849,7 @@ class ProfileTabScreen extends StatelessWidget {
                         ),
                         Switch(
                           value: AppColors.isDark(context),
-                          activeThumbColor: AppColors.darkPrimary,
+                          activeColor: AppColors.darkPrimary,
                           onChanged: (_) =>
                               ThemeController.instance.toggleTheme(context),
                         ),
@@ -858,7 +918,7 @@ class ProfileTabScreen extends StatelessWidget {
                             border: Border.all(
                               color: unlocked
                                   ? AppColors.primaryOf(context)
-                                      .withValues(alpha: 0.45)
+                                      .withOpacity(0.45)
                                   : AppColors.borderOf(context),
                               width: unlocked ? 1.5 : 1,
                             ),
@@ -919,9 +979,8 @@ class ProfileTabScreen extends StatelessWidget {
               ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
   }
 
   Widget _buildMetricCard({

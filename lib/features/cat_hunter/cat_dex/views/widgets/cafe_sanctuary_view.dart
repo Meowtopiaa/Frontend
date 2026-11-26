@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_dimensions.dart';
+import '../../../logic/cat_hunter_provider.dart';
 import '../../data/models/cat_model.dart';
-import '../../data/repositories/mock_cat_repository.dart';
 import 'cafe_room_stage.dart';
 
 class CafeSanctuaryView extends StatefulWidget {
@@ -77,16 +78,18 @@ class _CafeSanctuaryViewState extends State<CafeSanctuaryView> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = MockCatRepository();
-    final activeCats = repo.cafeActiveCats.take(5).toList();
+    final provider = context.watch<CatHunterProvider>();
+    final activeCats = provider.cafeActiveCats.take(5).toList();
 
     return SingleChildScrollView(
       physics: _isStageInteractionLocked
           ? const NeverScrollableScrollPhysics()
           : null,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.marginHorizontal,
-        vertical: AppDimensions.spaceMd,
+      padding: const EdgeInsets.fromLTRB(
+        AppDimensions.marginHorizontal,
+        AppDimensions.spaceMd,
+        AppDimensions.marginHorizontal,
+        96,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -208,7 +211,7 @@ class _CafeSanctuaryViewState extends State<CafeSanctuaryView> {
                     child: Tooltip(
                       message: 'Mode Layar Penuh',
                       child: Material(
-                        color: AppColors.cardBg(context).withValues(alpha: 0.92),
+                        color: AppColors.cardBg(context).withOpacity(0.92),
                         shape: const CircleBorder(),
                         elevation: 3,
                         child: InkWell(
@@ -242,7 +245,7 @@ class _CafeSanctuaryViewState extends State<CafeSanctuaryView> {
                 color: AppColors.cardBg(context),
                 borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
                 border: Border.all(
-                  color: AppColors.primaryOf(context).withValues(alpha: 0.35),
+                  color: AppColors.primaryOf(context).withOpacity(0.35),
                   width: 1.5,
                 ),
                 boxShadow: AppDimensions.cardShadow,
@@ -536,14 +539,14 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
                             ),
                             decoration: BoxDecoration(
                               color: isNight
-                                  ? Colors.black.withValues(alpha: 0.55)
-                                  : Colors.white.withValues(alpha: 0.92),
+                                  ? Colors.black.withOpacity(0.55)
+                                  : Colors.white.withOpacity(0.92),
                               borderRadius: BorderRadius.circular(
                                 AppDimensions.radiusFull,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.12),
+                                  color: Colors.black.withOpacity(0.12),
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
                                 ),
@@ -603,13 +606,13 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.94),
+                          color: Colors.white.withOpacity(0.94),
                           borderRadius: BorderRadius.circular(
                             AppDimensions.radiusFull,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.16),
+                              color: Colors.black.withOpacity(0.16),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),
@@ -671,7 +674,7 @@ class _FullScreenHudButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: Colors.white.withOpacity(0.92),
         shape: const CircleBorder(),
         elevation: 3,
         child: InkWell(

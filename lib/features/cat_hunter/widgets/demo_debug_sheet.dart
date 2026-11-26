@@ -1,10 +1,12 @@
 // TODO: Hapus atau nonaktifkan Mode Demo ini sebelum rilis produksi Play Store/App Store
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
+import '../logic/cat_hunter_provider.dart';
 import 'primary_button.dart';
 import 'secondary_button.dart';
-import '../cat_dex/data/repositories/mock_cat_repository.dart';
 
 // TODO: Hapus atau nonaktifkan Mode Demo ini sebelum rilis produksi Play Store/App Store
 Future<void> showDemoDebugSheet(
@@ -40,13 +42,18 @@ class _DemoDebugBottomSheet extends StatefulWidget {
 }
 
 class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
-  late String _selectedCatId;
+  String? _selectedCatId;
 
   @override
   void initState() {
     super.initState();
-    final repo = MockCatRepository();
-    _selectedCatId = widget.initialCatId ?? repo.allCats.first.id;
+    final cats = widget.parentContext.read<CatHunterProvider>().allCats;
+    if (widget.initialCatId != null &&
+        cats.any((c) => c.id == widget.initialCatId)) {
+      _selectedCatId = widget.initialCatId;
+    } else if (cats.isNotEmpty) {
+      _selectedCatId = cats.first.id;
+    }
   }
 
   void _showSnack(String message) {
@@ -61,8 +68,22 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = MockCatRepository();
-    final selectedCat = repo.getCatById(_selectedCatId);
+    final provider = context.watch<CatHunterProvider>();
+    final cats = provider.allCats;
+    if (cats.isEmpty) {
+      return const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('Belum ada data kucing untuk disimulasikan.'),
+        ),
+      );
+    }
+
+    final resolvedId = (_selectedCatId != null &&
+            cats.any((c) => c.id == _selectedCatId))
+        ? _selectedCatId!
+        : cats.first.id;
+    final selectedCat = provider.getCatById(resolvedId);
 
     return SafeArea(
       child: Padding(
@@ -81,7 +102,7 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.borderInteractive,
+                  color: AppColors.borderInteractiveOf(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -92,17 +113,17 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryPeach,
+                    color: AppColors.peachBgOf(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.bug_report_rounded,
-                    color: AppColors.primary,
+                    color: AppColors.primaryOf(context),
                     size: 20,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -111,14 +132,14 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: AppColors.textPrimaryOf(context),
                         ),
                       ),
                       Text(
                         'Panel simulasi pengujian alur pertemuan & cooldown',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: AppColors.textSecondaryOf(context),
                         ),
                       ),
                     ],
@@ -127,43 +148,45 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Pilih Target Kucing:',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryOf(context),
               ),
             ),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
-              initialValue: _selectedCatId,
+              value: resolvedId,
               isExpanded: true,
               decoration: InputDecoration(
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 filled: true,
-                fillColor: AppColors.surfaceSubtle,
+                fillColor: AppColors.subtleBg(context),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-                  borderSide:
-                      const BorderSide(color: AppColors.borderInteractive),
+                  borderSide: BorderSide(
+                    color: AppColors.borderInteractiveOf(context),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-                  borderSide:
-                      const BorderSide(color: AppColors.borderInteractive),
+                  borderSide: BorderSide(
+                    color: AppColors.borderInteractiveOf(context),
+                  ),
                 ),
               ),
-              items: repo.allCats.map((cat) {
+              items: cats.map((cat) {
                 return DropdownMenuItem<String>(
                   value: cat.id,
                   child: Text(
                     '${cat.name} (Pertemuan ${cat.encounterCount}/5)',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: AppColors.textPrimaryOf(context),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -182,7 +205,7 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
               label: 'Reset Cooldown Hari Ini',
               icon: Icons.refresh_rounded,
               onPressed: () {
-                repo.resetAllDailyCooldowns();
+                provider.resetAllDailyCooldowns();
                 Navigator.of(context).pop();
                 _showSnack('Cooldown harian seluruh kucing berhasil direset!');
               },
@@ -192,7 +215,7 @@ class _DemoDebugBottomSheetState extends State<_DemoDebugBottomSheet> {
               label: 'Simulasi 4x Pertemuan',
               icon: Icons.fast_forward_rounded,
               onPressed: () {
-                repo.simulateFourEncounters(_selectedCatId);
+                provider.simulateFourEncounters(resolvedId);
                 Navigator.of(context).pop();
                 _showSnack(
                   '${selectedCat.name} diset ke 4x pertemuan. Scan berikutnya membuka fitur Rename!',
