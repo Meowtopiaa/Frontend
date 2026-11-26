@@ -1,17 +1,24 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../cat_dex/views/widgets/rename_cat_dialog.dart';
+import '../../constants/app_assets.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
+import '../../logic/cat_hunter_provider.dart';
 import '../../widgets/primary_button.dart';
-import '../../cat_dex/data/repositories/mock_cat_repository.dart';
-import '../../cat_dex/views/widgets/rename_cat_dialog.dart';
 
 class CelebrationScreen extends StatefulWidget {
   final String catId;
+  final bool isMuted;
 
   const CelebrationScreen({
     super.key,
     required this.catId,
+    this.isMuted = false,
   });
 
   @override
@@ -23,10 +30,16 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   late final AnimationController _jumpController;
   late final Animation<double> _jumpAnimation;
   late final AnimationController _confettiController;
+  late final AudioPlayer _meowPlayer;
 
   @override
   void initState() {
     super.initState();
+
+    _meowPlayer = AudioPlayer();
+    if (!widget.isMuted) {
+      unawaited(_playCelebrationMeow());
+    }
 
     _jumpController = AnimationController(
       vsync: this,
@@ -46,10 +59,20 @@ class _CelebrationScreenState extends State<CelebrationScreen>
     )..repeat();
   }
 
+  Future<void> _playCelebrationMeow() async {
+    try {
+      await _meowPlayer.setVolume(0.95);
+      await _meowPlayer.play(AssetSource(AppAssets.sfxCatMeow));
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _jumpController.dispose();
     _confettiController.dispose();
+    try {
+      _meowPlayer.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -60,15 +83,17 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   Future<void> _openRenameDialog() async {
     final renamed = await showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: Colors.black.withOpacity(0.55),
       builder: (_) => RenameCatDialog(catId: widget.catId),
     );
 
     if (renamed == true && mounted) {
-      final updatedName = MockCatRepository().getCatById(widget.catId).name;
+      final updatedName =
+          context.read<CatHunterProvider>().getCatById(widget.catId).name;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Selamat! Nama permanen "$updatedName" berhasil dikunci.'),
+          content:
+              Text('Selamat! Nama permanen "$updatedName" berhasil dikunci.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -77,273 +102,266 @@ class _CelebrationScreenState extends State<CelebrationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final repo = MockCatRepository();
+    final provider = context.watch<CatHunterProvider>();
+    final cat = provider.getCatById(widget.catId);
+    final displayEncounter = cat.encounterCount.clamp(1, 5);
 
-    return ListenableBuilder(
-      listenable: repo,
-      builder: (context, _) {
-        final cat = repo.getCatById(widget.catId);
-        final displayEncounter = cat.encounterCount.clamp(1, 5);
+    String titleText;
+    String subtitleText;
+    if (cat.canBeNamed) {
+      titleText = 'Kucing Kampus Resmi\nJadi Sahabatmu!';
+      subtitleText = 'Kamu membuka status pertemanan sejati 🌟';
+    } else if (cat.isNameLocked) {
+      titleText = '${cat.name} Senang\nBertemu Lagi!';
+      subtitleText = 'Ikatan persahabatan kalian makin erat 💖';
+    } else {
+      final remaining = (5 - cat.encounterCount).clamp(1, 5);
+      titleText = 'Kamu Berhasil\nMenjinakkannya!';
+      subtitleText = 'Sapa $remaining kali lagi untuk memberi nama permanen!';
+    }
 
-        String titleText;
-        String subtitleText;
-        if (cat.canBeNamed) {
-          titleText = 'Kucing Kampus Resmi\nJadi Sahabatmu!';
-          subtitleText = 'Kamu membuka status pertemanan sejati Ã°Å¸Å’Å¸';
-        } else if (cat.isNameLocked) {
-          titleText = '${cat.name} Senang\nBertemu Lagi!';
-          subtitleText = 'Ikatan persahabatan kalian makin erat Ã°Å¸â€™â€“';
-        } else {
-          final remaining = (5 - cat.encounterCount).clamp(1, 5);
-          titleText = 'Kamu Berhasil\nMenjinakkannya!';
-          subtitleText =
-              'Sapa $remaining kali lagi untuk memberi nama permanen!';
-        }
-
-        return Scaffold(
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Pastel Celebration Gradient Background
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.celebrationBgTop,
-                      AppColors.celebrationBgBottom,
-                    ],
-                  ),
-                ),
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Pastel Celebration Gradient Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.celebrationBgTop,
+                  AppColors.celebrationBgBottom,
+                ],
               ),
+            ),
+          ),
 
-              // Radial Sunburst
-              CustomPaint(
-                painter: _CelebrationSunburstPainter(
-                  rayColor: Colors.white.withValues(alpha: 0.45),
+          // Radial Sunburst
+          CustomPaint(
+            painter: _CelebrationSunburstPainter(
+              rayColor: Colors.white.withOpacity(0.45),
+            ),
+          ),
+
+          // Animated Falling Confetti & Hearts
+          AnimatedBuilder(
+            animation: _confettiController,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: _ConfettiHeartsPainter(
+                  progress: _confettiController.value,
                 ),
-              ),
+              );
+            },
+          ),
 
-              // Animated Falling Confetti & Hearts
-              AnimatedBuilder(
-                animation: _confettiController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    painter: _ConfettiHeartsPainter(
-                      progress: _confettiController.value,
+          // Main Content
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.marginHorizontal,
+                vertical: AppDimensions.spaceMd,
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+
+                  // Top Ribbon Pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
                     ),
-                  );
-                },
-              ),
-
-              // Main Content
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.marginHorizontal,
-                    vertical: AppDimensions.spaceMd,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          AppColors.swipeOrbStart,
+                          AppColors.primary,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.32),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      '★  IKATAN TERJALIN!  ★',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.9,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
 
-                      // Top Ribbon Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppColors.swipeOrbStart,
-                              AppColors.primary,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(999),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.32),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                  const SizedBox(height: 18),
+
+                  // Big Celebration Title
+                  Text(
+                    titleText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 27,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.celebrationTitle,
+                      height: 1.18,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitleText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF78350F),
+                    ),
+                  ),
+
+                  // Jumping Happy Cat Sprite
+                  Expanded(
+                    child: Center(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 240,
+                            height: 240,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.65),
+                                  Colors.transparent,
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                        child: const Text(
-                          'Ã¢Ëœâ€¦  IKATAN TERJALIN!  Ã¢Ëœâ€¦',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.9,
-                            color: Colors.white,
                           ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // Big Celebration Title
-                      Text(
-                        titleText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.celebrationTitle,
-                          height: 1.18,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        subtitleText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF78350F),
-                        ),
-                      ),
-
-                      // Jumping Happy Cat Sprite (transparent, no white box)
-                      Expanded(
-                        child: Center(
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 240,
-                                height: 240,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      Colors.white.withValues(alpha: 0.65),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              AnimatedBuilder(
-                                animation: _jumpAnimation,
-                                builder: (context, child) {
-                                  return Transform.translate(
-                                    offset: Offset(0, _jumpAnimation.value),
-                                    child: child,
-                                  );
-                                },
-                                child: Image.asset(
-                                  cat.happyPoseAsset,
-                                  width: 245,
-                                  height: 245,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.pets_rounded,
-                                    size: 110,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Encounter Pill Badge: "Pertemuan X / 5"
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: AppColors.borderSubtle),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primaryPeach,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
+                          AnimatedBuilder(
+                            animation: _jumpAnimation,
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, _jumpAnimation.value),
+                                child: child,
+                              );
+                            },
+                            child: Image.asset(
+                              cat.happyPoseAsset,
+                              width: 245,
+                              height: 245,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
                                 Icons.pets_rounded,
-                                size: 14,
+                                size: 110,
                                 color: AppColors.primary,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Text(
-                              cat.isNameLocked
-                                  ? 'Pertemuan $displayEncounter / 5 Ã¢â‚¬Â¢ ${cat.name}'
-                                  : 'Pertemuan $displayEncounter / 5',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              width: 9,
-                              height: 9,
-                              decoration: const BoxDecoration(
-                                color: AppColors.sweetSpotGreen,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 22),
-
-                      // Action Buttons
-                      if (cat.canBeNamed) ...[
-                        PrimaryButton(
-                          label: 'Beri Nama',
-                          icon: Icons.edit_rounded,
-                          onPressed: _openRenameDialog,
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _goToHome,
-                          child: const Text(
-                            'Selesai',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
                           ),
-                        ),
-                      ] else ...[
-                        PrimaryButton(
-                          label: 'Selesai',
-                          icon: Icons.check_rounded,
-                          onPressed: _goToHome,
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Encounter Pill Badge: "Pertemuan X / 5"
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.borderSubtle),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
-                      const SizedBox(height: 8),
-                    ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primaryPeach,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.pets_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          cat.isNameLocked
+                              ? 'Pertemuan $displayEncounter / 5 • ${cat.name}'
+                              : 'Pertemuan $displayEncounter / 5',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const BoxDecoration(
+                            color: AppColors.sweetSpotGreen,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+
+                  const SizedBox(height: 22),
+
+                  // Action Buttons
+                  if (cat.canBeNamed) ...[
+                    PrimaryButton(
+                      label: 'Beri Nama',
+                      icon: Icons.edit_rounded,
+                      onPressed: _openRenameDialog,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _goToHome,
+                      child: const Text(
+                        'Selesai',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    PrimaryButton(
+                      label: 'Selesai',
+                      icon: Icons.check_rounded,
+                      onPressed: _goToHome,
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                ],
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -411,7 +429,7 @@ class _ConfettiHeartsPainter extends CustomPainter {
       final xPos =
           xFactor * size.width + math.sin((progress * 2 * math.pi) + i) * 10;
 
-      final paint = Paint()..color = color.withValues(alpha: 0.75);
+      final paint = Paint()..color = color.withOpacity(0.75);
       canvas.drawCircle(Offset(xPos, yPos), radius, paint);
     }
   }

@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../constants/app_assets.dart';
 import '../../constants/app_colors.dart';
 import '../../cat_dex/data/models/cat_model.dart';
-import '../../cat_dex/data/repositories/mock_cat_repository.dart';
 import '../../encounter_result/views/celebration_screen.dart';
+import '../../logic/cat_hunter_provider.dart';
 
 enum PettingPose {
   head,
@@ -56,10 +59,20 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
   final List<_TrailPoint> _trailPoints = [];
   int _orbCounter = 0;
 
+  // Audio players for BGM and SFX
+  late final AudioPlayer _bgmPlayer;
+  late final AudioPlayer _popPlayer;
+  late final AudioPlayer _meowPlayer;
+
   @override
   void initState() {
     super.initState();
     _firstPose = _random.nextBool() ? PettingPose.head : PettingPose.belly;
+
+    _bgmPlayer = AudioPlayer();
+    _popPlayer = AudioPlayer();
+    _meowPlayer = AudioPlayer();
+    unawaited(_initAudio());
 
     _breathController = AnimationController(
       vsync: this,
@@ -74,21 +87,87 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
     );
 
     _gameTicker = createTicker(_onTick)..start();
-    _spawnOrb();
+    _spawnInitialWave();
     _startSpawnTimer();
+  }
+
+  Future<void> _initAudio() async {
+    const sfxContext = AudioContext(
+      android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+    );
+    try {
+      await _popPlayer.setAudioContext(sfxContext);
+      await _popPlayer.setPlayerMode(PlayerMode.lowLatency);
+      await _popPlayer.setVolume(0.7);
+
+      await _meowPlayer.setAudioContext(sfxContext);
+      await _meowPlayer.setVolume(0.9);
+
+      await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
+      await _bgmPlayer.setVolume(0.35);
+      if (!_isMuted && !_isPaused && !_isCompleted) {
+        await _bgmPlayer.play(AssetSource(AppAssets.bgmPetting));
+      }
+    } catch (_) {
+      // Abaikan jika perangkat/test tidak mendukung audio plugin.
+    }
+  }
+
+  Future<void> _playPopSfx() async {
+    if (_isMuted) return;
+    try {
+      await _popPlayer.stop();
+      await _popPlayer.play(AssetSource(AppAssets.sfxPop));
+    } catch (_) {}
+  }
+
+  Future<void> _playMeowSfx() async {
+    if (_isMuted) return;
+    try {
+      await _meowPlayer.stop();
+      await _meowPlayer.play(AssetSource(AppAssets.sfxCatMeow));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleMute() async {
+    setState(() => _isMuted = !_isMuted);
+    try {
+      if (_isMuted) {
+        await _bgmPlayer.pause();
+      } else if (!_isPaused && !_isCompleted) {
+        await _bgmPlayer.resume();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _togglePause() async {
+    setState(() => _isPaused = !_isPaused);
+    try {
+      if (_isPaused) {
+        await _bgmPlayer.pause();
+      } else if (!_isMuted && !_isCompleted) {
+        await _bgmPlayer.resume();
+      }
+    } catch (_) {}
+  }
+
+  void _spawnInitialWave() {
+    _spawnOrb(initialT: 0.0);
+    _spawnOrb(initialT: 0.24);
+    _spawnOrb(initialT: 0.48);
   }
 
   void _startSpawnTimer() {
     _spawnTimer?.cancel();
-    _spawnTimer = Timer.periodic(const Duration(milliseconds: 700), (_) {
+    _spawnTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
       if (!mounted || _isPaused || _isCompleted) return;
-      if (_orbs.length < 5) {
+      if (_orbs.length < 9) {
         _spawnOrb();
       }
     });
   }
 
-  void _spawnOrb() {
+  void _spawnOrb({double initialT = 0.0}) {
     _orbCounter++;
     final spawnFromLeft = _orbCounter.isOdd;
     final icons = [
@@ -102,9 +181,9 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
         _SwipeOrb(
           id: _orbCounter,
           fromLeft: spawnFromLeft,
-          t: 0.0,
-          speed: 0.34 + _random.nextDouble() * 0.14,
-          arcOffset: (_random.nextDouble() - 0.5) * 0.16,
+          t: initialT,
+          speed: 0.26 + _random.nextDouble() * 0.14,
+          arcOffset: (_random.nextDouble() - 0.5) * 0.18,
           radius: _orbCounter == 1 ? 33.0 : (26.0 + _random.nextDouble() * 6.0),
           icon: icons[_orbCounter % icons.length],
         ),
@@ -207,6 +286,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
 
     if (!_isMuted) {
       HapticFeedback.lightImpact();
+      unawaited(_playPopSfx());
     }
 
     setState(() {
@@ -248,7 +328,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
         });
       });
 
-      final nextProgress = (_progress + hitIds.length * 0.10).clamp(0.0, 1.0);
+      final nextProgress = (_progress + hitIds.length * 0.025).clamp(0.0, 1.0);
       _progress = nextProgress;
 
       // Auto-switch pose at 50%
@@ -257,8 +337,9 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
         _orbs.clear();
         if (!_isMuted) {
           HapticFeedback.mediumImpact();
+          unawaited(_playMeowSfx());
         }
-        _spawnOrb();
+        _spawnInitialWave();
       }
     });
 
@@ -267,28 +348,48 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
     }
   }
 
-  void _completeSession() {
+  Future<void> _completeSession() async {
     _isCompleted = true;
     _spawnTimer?.cancel();
     _reactionResetTimer?.cancel();
+    try {
+      await _bgmPlayer.stop();
+    } catch (_) {}
 
     if (!_isMuted) {
       HapticFeedback.heavyImpact();
     }
 
-    MockCatRepository().recordEncounter(widget.catId);
+    final provider = context.read<CatHunterProvider>();
+    final updatedCat = await provider.completeEncounter(widget.catId);
+    if (!mounted) return;
 
-    Future.delayed(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => CelebrationScreen(catId: widget.catId),
-          transitionDuration: const Duration(milliseconds: 380),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
+    if (updatedCat == null) {
+      final err = provider.errorMessage ?? 'Gagal menyimpan pertemuan.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          backgroundColor: AppColors.missRed,
+          behavior: SnackBarBehavior.floating,
         ),
       );
-    });
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => CelebrationScreen(
+          catId: widget.catId,
+          isMuted: _isMuted,
+        ),
+        transitionDuration: const Duration(milliseconds: 380),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
   }
 
   @override
@@ -297,12 +398,18 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
     _reactionResetTimer?.cancel();
     _gameTicker.dispose();
     _breathController.dispose();
+    try {
+      _bgmPlayer.dispose();
+      _popPlayer.dispose();
+      _meowPlayer.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cat = MockCatRepository().getCatById(widget.catId);
+    final provider = context.watch<CatHunterProvider>();
+    final cat = provider.getCatById(widget.catId);
     final isHeadPose = _currentPose == PettingPose.head;
     final currentAsset = isHeadPose ? cat.headPoseAsset : cat.bellyPoseAsset;
     final progressPct = (_progress * 100).round().clamp(0, 100);
@@ -356,7 +463,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.favorite_border_rounded,
                               size: 20,
-                              color: AppColors.primary.withValues(alpha: 0.45),
+                              color: AppColors.primary.withOpacity(0.45),
                             ),
                           ),
                           Positioned(
@@ -365,7 +472,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.auto_awesome_rounded,
                               size: 22,
-                              color: AppColors.swipeHalo.withValues(alpha: 0.8),
+                              color: AppColors.swipeHalo.withOpacity(0.8),
                             ),
                           ),
                           Positioned(
@@ -374,7 +481,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.auto_awesome_rounded,
                               size: 20,
-                              color: AppColors.primary.withValues(alpha: 0.55),
+                              color: AppColors.primary.withOpacity(0.55),
                             ),
                           ),
                           Positioned(
@@ -383,7 +490,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                             child: Icon(
                               Icons.favorite_border_rounded,
                               size: 22,
-                              color: AppColors.primaryPeachDark.withValues(alpha: 0.4),
+                              color: AppColors.primaryPeachDark.withOpacity(0.4),
                             ),
                           ),
 
@@ -398,7 +505,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                                   borderRadius: BorderRadius.circular(100),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.14),
+                                      color: Colors.black.withOpacity(0.14),
                                       blurRadius: 22,
                                       spreadRadius: 2,
                                     ),
@@ -449,7 +556,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                               painter: _SwipeGuidePainter(
                                 pose: _currentPose,
                                 catSpan: catSize,
-                                pathColor: AppColors.swipePath.withValues(alpha: 0.75),
+                                pathColor: AppColors.swipePath.withOpacity(0.75),
                               ),
                             ),
                           ),
@@ -508,11 +615,10 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                           if (_isPaused)
                             Positioned.fill(
                               child: Container(
-                                color: Colors.black.withValues(alpha: 0.35),
+                                color: Colors.black.withOpacity(0.35),
                                 child: Center(
                                   child: GestureDetector(
-                                    onTap: () =>
-                                        setState(() => _isPaused = false),
+                                    onTap: _togglePause,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 28,
@@ -524,7 +630,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                                         boxShadow: [
                                           BoxShadow(
                                             color:
-                                                Colors.black.withValues(alpha: 0.18),
+                                                Colors.black.withOpacity(0.18),
                                             blurRadius: 20,
                                           ),
                                         ],
@@ -549,6 +655,18 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                                         ],
                                       ),
                                     ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          if (provider.isSubmitting)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black.withOpacity(0.25),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primary,
                                   ),
                                 ),
                               ),
@@ -586,11 +704,11 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: Colors.white.withOpacity(0.95),
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withOpacity(0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -627,11 +745,11 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
+              color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: Colors.black.withOpacity(0.06),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -724,18 +842,18 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
             icon: _isMuted
                 ? Icons.volume_off_rounded
                 : Icons.volume_up_rounded,
-            onTap: () => setState(() => _isMuted = !_isMuted),
+            onTap: _toggleMute,
           ),
 
           // Phase Indicator Pill (Dot 1 - Paw - Dot 2)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
+              color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: Colors.black.withOpacity(0.06),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -751,7 +869,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                     shape: BoxShape.circle,
                     color: activePhaseIndex == 0
                         ? AppColors.primary
-                        : AppColors.primary.withValues(alpha: 0.35),
+                        : AppColors.primary.withOpacity(0.35),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -768,7 +886,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
                     shape: BoxShape.circle,
                     color: activePhaseIndex == 1
                         ? AppColors.primary
-                        : AppColors.primary.withValues(alpha: 0.35),
+                        : AppColors.primary.withOpacity(0.35),
                   ),
                 ),
               ],
@@ -777,7 +895,7 @@ class _ApproachArenaScreenState extends State<ApproachArenaScreen>
 
           _CircleHudButton(
             icon: _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-            onTap: () => setState(() => _isPaused = !_isPaused),
+            onTap: _togglePause,
           ),
         ],
       ),
@@ -802,11 +920,11 @@ class _CircleHudButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
+          color: Colors.white.withOpacity(0.95),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -854,7 +972,7 @@ class _GlowingOrbWidget extends StatelessWidget {
             border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
               BoxShadow(
-                color: AppColors.swipeHalo.withValues(alpha: 0.75),
+                color: AppColors.swipeHalo.withOpacity(0.75),
                 blurRadius: 16,
                 spreadRadius: 3,
               ),
@@ -1005,7 +1123,7 @@ class _SwipeTrailPainter extends CustomPainter {
       final p1 = points[i];
       final alpha = (1.0 - (p1.age / 0.28)).clamp(0.0, 1.0);
       final paint = Paint()
-        ..color = AppColors.swipeHalo.withValues(alpha: alpha * 0.85)
+        ..color = AppColors.swipeHalo.withOpacity(alpha * 0.85)
         ..strokeWidth = 10.0 * alpha
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(p0.offset, p1.offset, paint);

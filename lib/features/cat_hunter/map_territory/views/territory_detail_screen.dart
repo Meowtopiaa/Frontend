@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../cat_dex/data/models/cat_model.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
+import '../../logic/cat_hunter_provider.dart';
+import '../../qr_scan/views/qr_scan_screen.dart';
 import '../../widgets/app_header_bar.dart';
 import '../../widgets/primary_button.dart';
-import '../../cat_dex/data/repositories/mock_cat_repository.dart';
-import '../../cat_dex/data/models/cat_model.dart';
-import '../../qr_scan/views/qr_scan_screen.dart';
 import '../models/territory_model.dart';
 
 class TerritoryDetailScreen extends StatelessWidget {
@@ -18,15 +20,31 @@ class TerritoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = MockCatRepository();
-    final residentCats = territory.residentCatIds
-        .map((id) => repo.getCatById(id))
+    final provider = context.watch<CatHunterProvider>();
+    final latestTerritory = provider.territories.firstWhere(
+      (t) => t.id == territory.id || (territory.code.isNotEmpty && t.code == territory.code),
+      orElse: () => territory,
+    );
+
+    final residentCats = latestTerritory.residentCatIds
+        .map(provider.findCatByIdOrNull)
+        .whereType<CatModel>()
         .toList();
+
+    if (residentCats.isEmpty) {
+      residentCats.addAll(
+        provider.allCats.where(
+          (c) =>
+              c.zone == latestTerritory.name ||
+              (latestTerritory.code.isNotEmpty && c.zoneCode == latestTerritory.code),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg(context),
       appBar: AppHeaderBar(
-        title: territory.name,
+        title: latestTerritory.name,
         subtitle: 'Zona Kampus Tel-U',
         statusText: '${residentCats.length} Kucing',
         showBackButton: true,
@@ -53,11 +71,12 @@ class TerritoryDetailScreen extends StatelessWidget {
                   children: [
                     Positioned.fill(
                       child: Image.asset(
-                        territory.imageAsset,
+                        latestTerritory.imageAsset,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppColors.primaryPeach,
-                          child: const Icon(Icons.location_city_rounded, size: 48, color: AppColors.primary),
+                          child: const Icon(Icons.location_city_rounded,
+                              size: 48, color: AppColors.primary),
                         ),
                       ),
                     ),
@@ -72,13 +91,13 @@ class TerritoryDetailScreen extends StatelessWidget {
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
                             colors: [
-                              Colors.black.withValues(alpha: 0.8),
+                              Colors.black.withOpacity(0.8),
                               Colors.transparent,
                             ],
                           ),
                         ),
                         child: Text(
-                          territory.landmark,
+                          latestTerritory.landmark,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -115,7 +134,7 @@ class TerritoryDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      territory.description,
+                      latestTerritory.description,
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondaryOf(context),
@@ -158,16 +177,37 @@ class TerritoryDetailScreen extends StatelessWidget {
 
               const SizedBox(height: AppDimensions.spaceSm),
 
-              ...residentCats.map((cat) => _buildResidentCatTile(context, cat)),
+              if (residentCats.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg(context),
+                    borderRadius:
+                        BorderRadius.circular(AppDimensions.radiusCard),
+                    border: Border.all(color: AppColors.borderOf(context)),
+                  ),
+                  child: Text(
+                    'Belum ada kucing terdata di zona ini.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                  ),
+                )
+              else
+                ...residentCats
+                    .map((cat) => _buildResidentCatTile(context, cat)),
 
               const SizedBox(height: AppDimensions.spaceLg),
 
               // Shortcut CTA: Pindai QR di Zona Ini
               PrimaryButton(
-                label: 'Pindai QR di Zona ${territory.name}',
+                label: 'Pindai QR di Zona ${latestTerritory.name}',
                 icon: Icons.qr_code_scanner_rounded,
                 onPressed: () {
-                  final initialTarget = residentCats.isNotEmpty ? residentCats.first.id : null;
+                  final initialTarget =
+                      residentCats.isNotEmpty ? residentCats.first.id : null;
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => QrScanScreen(initialCatId: initialTarget),
@@ -262,7 +302,7 @@ class TerritoryDetailScreen extends StatelessWidget {
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-            color: AppColors.textSecondary,
+            color: AppColors.textSecondaryOf(context),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(

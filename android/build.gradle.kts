@@ -19,6 +19,19 @@ subprojects {
         if (project.name == "camera_android_camerax") {
             project.dependencies.add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
         }
+        if (project.name == "audioplayers_android") {
+            val appCompileSdk = rootProject.project(":app")
+                .extensions
+                .findByType(com.android.build.gradle.BaseExtension::class.java)
+                ?.compileSdkVersion
+            extensions.findByType(com.android.build.gradle.LibraryExtension::class.java)?.apply {
+                if (appCompileSdk != null) {
+                    compileSdkVersion(appCompileSdk)
+                } else {
+                    compileSdk = 34
+                }
+            }
+        }
     }
 }
 subprojects {

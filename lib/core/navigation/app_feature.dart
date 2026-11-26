@@ -11,7 +11,7 @@ enum AppFeature {
   ),
   feeding('Spot Makan', '/feeding', Icons.rice_bowl_rounded, MeowStyle.orange),
   hunter(
-    'Cat Hunter',
+    'Meowtopia Game',
     '/hunter',
     Icons.catching_pokemon_rounded,
     MeowStyle.violet,

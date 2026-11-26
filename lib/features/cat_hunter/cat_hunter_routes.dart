@@ -1,8 +1,7 @@
 import 'package:go_router/go_router.dart';
 
+import 'qr_scan/views/qr_scan_screen.dart';
 import 'ui/cat_dex_page.dart';
-import 'ui/cat_encounter_page.dart';
-import 'ui/leaderboard_page.dart';
 
 final List<RouteBase> catHunterRoutes = [
   GoRoute(
@@ -11,11 +10,7 @@ final List<RouteBase> catHunterRoutes = [
     routes: [
       GoRoute(
         path: 'encounter',
-        builder: (context, state) => const CatEncounterPage(),
-      ),
-      GoRoute(
-        path: 'leaderboard',
-        builder: (context, state) => const LeaderboardPage(),
+        builder: (context, state) => const QrScanScreen(),
       ),
     ],
   ),
