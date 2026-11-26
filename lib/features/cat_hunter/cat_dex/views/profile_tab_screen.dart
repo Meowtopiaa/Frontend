@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
 import '../../logic/cat_hunter_provider.dart';
-import '../../theme/theme_controller.dart';
 import '../../widgets/app_header_bar.dart';
 import '../../widgets/demo_debug_sheet.dart';
 import '../data/models/cat_model.dart';
@@ -169,7 +168,7 @@ class ProfileTabScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'TelCat World Ã¢â‚¬â€ Super App Kucing Kampus',
+              'TelCat World — Super App Kucing Kampus',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -448,8 +447,8 @@ class ProfileTabScreen extends StatelessWidget {
                 ),
                 child: Text(
                   unlocked
-                      ? 'Terbuka Ã¢â‚¬Â¢ $displayCurrent / ${medal.target}'
-                      : 'Terkunci Ã¢â‚¬Â¢ Progres $displayCurrent / ${medal.target}',
+                      ? 'Terbuka • $displayCurrent / ${medal.target}'
+                      : 'Terkunci • Progres $displayCurrent / ${medal.target}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -685,7 +684,7 @@ class ProfileTabScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'S1 Sistem Informasi Ã¢â‚¬Â¢ 120220xxxx',
+                                'S1 Sistem Informasi • 120220xxxx',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondaryOf(context),
@@ -773,7 +772,7 @@ class ProfileTabScreen extends StatelessWidget {
                           context: context,
                           title: 'Kucing Terkoleksi',
                           value: '$collected',
-                          emoji: 'Ã°Å¸ÂÂ¾',
+                          emoji: '🐾',
                           color: AppColors.sweetSpotGreen,
                         ),
                       ),
@@ -783,78 +782,11 @@ class ProfileTabScreen extends StatelessWidget {
                           context: context,
                           title: 'Total Pertemuan',
                           value: '$totalEncounters',
-                          emoji: 'Ã°Å¸â€™â€“',
+                          emoji: '💖',
                           color: AppColors.primaryOf(context),
                         ),
                       ),
                     ],
-                  ),
-
-                  const SizedBox(height: AppDimensions.spaceMd),
-
-                  // Quick Dark Mode Switch Card
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(context),
-                      borderRadius:
-                          BorderRadius.circular(AppDimensions.radiusCard),
-                      border: Border.all(color: AppColors.borderOf(context)),
-                      boxShadow: AppDimensions.cardShadow,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.peachBgOf(context),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            AppColors.isDark(context)
-                                ? Icons.dark_mode_rounded
-                                : Icons.light_mode_rounded,
-                            size: 20,
-                            color: AppColors.primaryOf(context),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Mode Gelap',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimaryOf(context),
-                                ),
-                              ),
-                              Text(
-                                AppColors.isDark(context)
-                                    ? 'Nuansa Cozy Warm Espresso aktif'
-                                    : 'Tampilan siang cerah aktif',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondaryOf(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: AppColors.isDark(context),
-                          activeColor: AppColors.darkPrimary,
-                          onChanged: (_) =>
-                              ThemeController.instance.toggleTheme(context),
-                        ),
-                      ],
-                    ),
                   ),
 
                   const SizedBox(height: AppDimensions.spaceLg),

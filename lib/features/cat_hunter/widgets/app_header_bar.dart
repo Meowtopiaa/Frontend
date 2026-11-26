@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import '../constants/app_assets.dart';
-import '../theme/theme_controller.dart';
 
 class AppHeaderBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -18,7 +17,7 @@ class AppHeaderBar extends StatelessWidget implements PreferredSizeWidget {
   const AppHeaderBar({
     super.key,
     this.title = 'Kucing Kampus',
-    this.subtitle = 'TelCat World â€¢ Kampus Tel-U',
+    this.subtitle = 'TelCat World • Kampus Tel-U',
     this.statusText = 'Aktif',
     this.showBackButton = false,
     this.onBack,
@@ -57,8 +56,6 @@ class AppHeaderBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ],
     );
-
-    final isDark = AppColors.isDark(context);
 
     return Container(
       padding: EdgeInsets.only(
@@ -160,38 +157,6 @@ class AppHeaderBar extends StatelessWidget implements PreferredSizeWidget {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Tooltip(
-                    message: isDark ? 'Mode Terang' : 'Mode Gelap',
-                    child: Material(
-                      color: AppColors.subtleBg(context),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => ThemeController.instance.toggleTheme(context),
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.borderInteractiveOf(context),
-                              width: 1,
-                            ),
-                          ),
-                          child: Icon(
-                            isDark
-                                ? Icons.light_mode_outlined
-                                : Icons.dark_mode_outlined,
-                            size: 16,
-                            color: isDark
-                                ? AppColors.darkPrimary
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                   if (onInfoPressed != null) ...[

@@ -166,7 +166,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
     ),
   ];
 
-  static const List<String> _chatSymbols = ['Ã¢ÂÂ¤Ã¯Â¸Â', 'Ã°Å¸ÂÂ¾', 'Ã¢Ââ€œ', 'Ã°Å¸Å½Âµ'];
+  static const List<String> _chatSymbols = ['💖', '🐾', '❓', '🎵'];
 
   final Map<String, GlobalKey<_CafeWalkingCatState>> _catKeys = {};
   final Map<String, int> _catWaypointIndices = {};
@@ -595,7 +595,7 @@ class CafeRoomStageState extends State<CafeRoomStage>
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Text('Ã°Å¸ÂÅ¸', style: TextStyle(fontSize: 24)),
+                        child: const Text('🐟', style: TextStyle(fontSize: 24)),
                       ),
                     ),
                   ),
@@ -1013,7 +1013,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
       _behavior = _CatLoopBehavior.furnitureSleep;
       _sleepUseBelly = _random.nextBool();
       _showHearts = false;
-      _bubbleText = 'Zzz... Ã°Å¸â€™Â¤';
+      _bubbleText = 'Zzz... 💤';
     });
 
     _heartController.repeat();
@@ -1035,7 +1035,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
     setState(() {
       _behavior = _CatLoopBehavior.furnitureEat;
       _showHearts = true;
-      _bubbleText = 'Ã°Å¸ÂÅ¸';
+      _bubbleText = '🐟';
     });
 
     _jumpController.repeat(reverse: true);
@@ -1250,6 +1250,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
+                  constraints: const BoxConstraints(maxWidth: 92),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
@@ -1267,10 +1268,13 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Ã¢ÂÂ¤Ã¯Â¸Â', style: TextStyle(fontSize: 9)),
+                      const Icon(
+                        Icons.favorite_rounded,
+                        size: 10,
+                        color: AppColors.heartAccent,
+                      ),
                       const SizedBox(width: 3),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 66),
+                      Flexible(
                         child: Text(
                           widget.cat.name,
                           style: const TextStyle(
@@ -1304,7 +1308,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
             ),
           ),
 
-          // Comic Bubble for Sleep (Zzz... Ã°Å¸â€™Â¤), Food (Ã°Å¸ÂÅ¸), or Social Chat (Ã¢ÂÂ¤Ã¯Â¸Â/Ã°Å¸ÂÂ¾/Ã¢Ââ€œ/Ã°Å¸Å½Âµ)
+          // Comic Bubble for Sleep (Zzz... 💤), Food (🐟), or Social Chat (❤️/🐾/❓/🎵)
           if (_bubbleText != null)
             Positioned(
               top: _behavior == _CatLoopBehavior.furnitureSleep ? -22 : -18,
@@ -1367,7 +1371,11 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                       left: 16 - (t * 8),
                       child: Opacity(
                         opacity: opacity,
-                        child: const Text('Ã¢ÂÂ¤Ã¯Â¸Â', style: TextStyle(fontSize: 16)),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          size: 16,
+                          color: AppColors.heartAccent,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -1375,7 +1383,7 @@ class _CafeWalkingCatState extends State<_CafeWalkingCat>
                       right: 14 - (t * 6),
                       child: Opacity(
                         opacity: opacity,
-                        child: const Text('Ã°Å¸â€™â€“', style: TextStyle(fontSize: 14)),
+                        child: const Text('💖', style: TextStyle(fontSize: 14)),
                       ),
                     ),
                   ],

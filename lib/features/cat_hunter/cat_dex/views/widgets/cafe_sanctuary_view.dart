@@ -395,23 +395,11 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
   late CafeTheme _theme;
   bool _isLaserMode = false;
   bool _isInteractionLocked = false;
-  bool _isPhotoModeHidingHud = false;
-  double _flashOpacity = 0.0;
-
-  Timer? _photoHudTimer;
-  Timer? _flashTimer;
 
   @override
   void initState() {
     super.initState();
     _theme = widget.initialTheme;
-  }
-
-  @override
-  void dispose() {
-    _photoHudTimer?.cancel();
-    _flashTimer?.cancel();
-    super.dispose();
   }
 
   void _cycleTheme() {
@@ -435,39 +423,6 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
       });
     }
     _stageKey.currentState?.triggerFishSnack();
-  }
-
-  void _triggerPhotoMode() {
-    HapticFeedback.mediumImpact();
-    _photoHudTimer?.cancel();
-    _flashTimer?.cancel();
-
-    setState(() {
-      _isPhotoModeHidingHud = true;
-      _flashOpacity = 0.92;
-    });
-
-    _flashTimer = Timer(const Duration(milliseconds: 70), () {
-      if (!mounted) return;
-      setState(() {
-        _flashOpacity = 0.0;
-      });
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ã°Å¸â€œÂ¸ Foto Kafe Tersimpan!'),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
-    );
-
-    _photoHudTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() {
-        _isPhotoModeHidingHud = false;
-      });
-    });
   }
 
   @override
@@ -507,83 +462,65 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
               ),
             ),
 
-            // Top HUD Overlay (Exit Full Screen, Theme Pill, Palette, Photo Mode)
+            // Top HUD Overlay (Exit Full Screen, Theme Pill, Palette)
             SafeArea(
               child: Align(
                 alignment: Alignment.topCenter,
-                child: IgnorePointer(
-                  ignoring: _isPhotoModeHidingHud,
-                  child: AnimatedOpacity(
-                    opacity: _isPhotoModeHidingHud ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 180),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Pojok Kiri Atas: Keluar Full Screen
+                      _FullScreenHudButton(
+                        icon: Icons.fullscreen_exit,
+                        tooltip: 'Keluar Layar Penuh',
+                        onTap: () => Navigator.of(context).pop(),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Pojok Kiri Atas: Keluar Full Screen
-                          _FullScreenHudButton(
-                            icon: Icons.fullscreen_exit,
-                            tooltip: 'Keluar Layar Penuh',
-                            onTap: () => Navigator.of(context).pop(),
-                          ),
 
-                          // Indikator Tema Aktif
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isNight
-                                  ? Colors.black.withOpacity(0.55)
-                                  : Colors.white.withOpacity(0.92),
-                              borderRadius: BorderRadius.circular(
-                                AppDimensions.radiusFull,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.12),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              _theme.label,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: isNight
-                                    ? Colors.white
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
+                      // Indikator Tema Aktif
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isNight
+                              ? Colors.black.withOpacity(0.55)
+                              : Colors.white.withOpacity(0.92),
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusFull,
                           ),
-
-                          // Pojok Kanan Atas: Ganti Tema & Photo Mode
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _FullScreenHudButton(
-                                icon: Icons.palette_outlined,
-                                tooltip: 'Ganti Tema Ruangan',
-                                onTap: _cycleTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _FullScreenHudButton(
-                                icon: Icons.camera_alt_rounded,
-                                tooltip: 'Photo Mode',
-                                onTap: _triggerPhotoMode,
-                              ),
-                            ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.12),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          _theme.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: isNight
+                                ? Colors.white
+                                : AppColors.textPrimary,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+
+                      // Pojok Kanan Atas: Ganti Tema Ruangan
+                      _FullScreenHudButton(
+                        icon: Icons.palette_outlined,
+                        tooltip: 'Ganti Tema Ruangan',
+                        onTap: _cycleTheme,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -593,62 +530,46 @@ class _CafeFullScreenPageState extends State<_CafeFullScreenPage> {
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
-                child: IgnorePointer(
-                  ignoring: _isPhotoModeHidingHud,
-                  child: AnimatedOpacity(
-                    opacity: _isPhotoModeHidingHud ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 180),
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.94),
-                          borderRadius: BorderRadius.circular(
-                            AppDimensions.radiusFull,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.16),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _ToyButton(
-                              emoji: 'Ã°Å¸ÂÅ¸',
-                              label: 'Snack Ikan',
-                              isActive: false,
-                              onTap: _triggerFishSnack,
-                            ),
-                            const SizedBox(width: 8),
-                            _ToyButton(
-                              emoji: 'Ã°Å¸â€Â´',
-                              label: 'Laser Pointer',
-                              isActive: _isLaserMode,
-                              onTap: _toggleLaserMode,
-                            ),
-                          ],
-                        ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.94),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusFull,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.16),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ToyButton(
+                          emoji: '🐟',
+                          label: 'Snack Ikan',
+                          isActive: false,
+                          onTap: _triggerFishSnack,
+                        ),
+                        const SizedBox(width: 8),
+                        _ToyButton(
+                          emoji: '🔴',
+                          label: 'Laser Pointer',
+                          isActive: _isLaserMode,
+                          onTap: _toggleLaserMode,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ),
-
-            // Camera Flash Overlay Effect
-            IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _flashOpacity,
-                duration: const Duration(milliseconds: 280),
-                child: Container(color: Colors.white),
               ),
             ),
           ],

@@ -28,13 +28,13 @@ extension MapAtmosphereModeInfo on MapAtmosphereMode {
   String get buttonLabel {
     switch (this) {
       case MapAtmosphereMode.auto:
-        return 'Ã°Å¸â€¢â€™ Otomatis';
+        return '🕒 Otomatis';
       case MapAtmosphereMode.morning:
-        return 'Ã¢Ëœâ‚¬Ã¯Â¸Â Pagi';
+        return '☀️ Pagi';
       case MapAtmosphereMode.dusk:
-        return 'Ã°Å¸Å’â€¦ Senja';
+        return '🌅 Senja';
       case MapAtmosphereMode.night:
-        return 'Ã°Å¸Å’â„¢ Malam';
+        return '🌙 Malam';
     }
   }
 
@@ -196,8 +196,8 @@ class _TerritoryMapScreenState extends State<TerritoryMapScreen>
 
   static const List<String> _zoneChatterOptions = [
     'Meow!',
-    'Ã°Å¸ÂÅ¸',
-    'Ã°Å¸â€™Â¤',
+    '🐟',
+    '💤',
   ];
 
   final math.Random _random = math.Random();

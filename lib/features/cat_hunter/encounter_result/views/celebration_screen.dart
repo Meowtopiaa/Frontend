@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../cat_dex/views/widgets/rename_cat_dialog.dart';
+import '../../constants/app_assets.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_dimensions.dart';
 import '../../logic/cat_hunter_provider.dart';
@@ -10,10 +13,12 @@ import '../../widgets/primary_button.dart';
 
 class CelebrationScreen extends StatefulWidget {
   final String catId;
+  final bool isMuted;
 
   const CelebrationScreen({
     super.key,
     required this.catId,
+    this.isMuted = false,
   });
 
   @override
@@ -25,10 +30,16 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   late final AnimationController _jumpController;
   late final Animation<double> _jumpAnimation;
   late final AnimationController _confettiController;
+  late final AudioPlayer _meowPlayer;
 
   @override
   void initState() {
     super.initState();
+
+    _meowPlayer = AudioPlayer();
+    if (!widget.isMuted) {
+      unawaited(_playCelebrationMeow());
+    }
 
     _jumpController = AnimationController(
       vsync: this,
@@ -48,10 +59,20 @@ class _CelebrationScreenState extends State<CelebrationScreen>
     )..repeat();
   }
 
+  Future<void> _playCelebrationMeow() async {
+    try {
+      await _meowPlayer.setVolume(0.95);
+      await _meowPlayer.play(AssetSource(AppAssets.sfxCatMeow));
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _jumpController.dispose();
     _confettiController.dispose();
+    try {
+      _meowPlayer.dispose();
+    } catch (_) {}
     super.dispose();
   }
 

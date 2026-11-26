@@ -39,4 +39,8 @@ class AppAssets {
   static const String catPutihWalk2 = 'assets/images/cat_putih_walk2.png';
   static const String catHitamWalk1 = 'assets/images/cat_hitam_walk1.png';
   static const String catHitamWalk2 = 'assets/images/cat_hitam_walk2.png';
+  // Audio Assets (path relatif dari folder assets/ untuk audioplayers AssetSource)
+  static const String bgmPetting = 'audio/bgm_petting.mp3';
+  static const String sfxCatMeow = 'audio/cat_meow.mp3';
+  static const String sfxPop = 'audio/pop.mp3';
 }

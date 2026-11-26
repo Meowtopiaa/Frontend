@@ -178,7 +178,7 @@ class MockCatRepository extends ChangeNotifier {
     TerritoryModel(
       id: 'territory_tult',
       name: 'TULT & Asrama',
-      shortLabel: 'ðŸ¢ TULT & Asrama',
+      shortLabel: '🏢 TULT & Asrama',
       description:
           'Area semenanjung kiri atas antara menara Telkom University Landmark Tower (TULT) dan deretan gedung asrama mahasiswa.',
       landmark: 'Menara TULT & Deretan Gedung Asrama',
@@ -193,7 +193,7 @@ class MockCatRepository extends ChangeNotifier {
     TerritoryModel(
       id: 'territory_gku',
       name: 'GKU',
-      shortLabel: 'ðŸ« GKU',
+      shortLabel: '🏫 GKU',
       description:
           'Gedung Kuliah Umum persegi besar berhalaman tengah di sisi kiri-tengah kampus yang sejuk untuk tempat berteduh kucing.',
       landmark: 'Gedung Kuliah Umum & Halaman Tengah',
@@ -208,7 +208,7 @@ class MockCatRepository extends ChangeNotifier {
     TerritoryModel(
       id: 'territory_cacuk',
       name: 'Cacuk',
-      shortLabel: 'ðŸ›ï¸ Cacuk',
+      shortLabel: '🏛️ Cacuk',
       description:
           'Area gedung akademik horizontal & gedung lengkung di pusat kampus berdekatan dengan Danau Situ Techno.',
       landmark: 'Gedung Cacuk & Gedung Lengkung Pusat',
@@ -223,7 +223,7 @@ class MockCatRepository extends ChangeNotifier {
     TerritoryModel(
       id: 'territory_fakultas',
       name: 'Fakultas Depan',
-      shortLabel: 'ðŸŽ“ Fakultas Depan',
+      shortLabel: '🎓 Fakultas Depan',
       description:
           'Kompleks gedung fakultas di sisi kanan dekat gerbang utama yang ramai disapa mahasiswa setiap pagi.',
       landmark: 'Kompleks Fakultas Depan & Gerbang Utama',
@@ -364,7 +364,7 @@ class MockCatRepository extends ChangeNotifier {
       return 'Nama tidak boleh kosong.';
     }
     if (trimmed.length < 2 || trimmed.length > 20) {
-      return 'Panjang nama harus 2â€“20 karakter.';
+      return 'Panjang nama harus 2–20 karakter.';
     }
     if (isNameTaken(trimmed)) {
       return 'Nama ini sudah dipakai kucing lain, pilih nama lain ya!';
