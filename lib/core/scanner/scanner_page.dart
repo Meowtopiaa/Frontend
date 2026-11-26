@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../features/feeding_spot/feeding_spot_actions.dart';
+import '../../features/feeding_spot/ui/scan_spot_page.dart';
 import '../constants/app_constants.dart';
 import '../network/api_client.dart';
 import '../widgets/loading_indicator.dart';
@@ -29,6 +32,7 @@ class _ScannerPageState extends State<ScannerPage> {
   final MobileScannerController _controller = MobileScannerController();
   final TextEditingController _manualInputController = TextEditingController();
   final ApiClient _apiClient = ApiClient();
+  final QrScanCooldown _scanCooldown = QrScanCooldown();
 
   bool _isProcessing = false;
   String? _errorMessage;
@@ -40,8 +44,10 @@ class _ScannerPageState extends State<ScannerPage> {
     super.dispose();
   }
 
-  Future<void> _handleCode(String rawCode) async {
-    if (_isProcessing) return;
+  Future<void> _handleCode(String rawCode, {bool fromCamera = false}) async {
+    final trimmed = rawCode.trim();
+    if (_isProcessing || trimmed.isEmpty) return;
+    if (fromCamera && _scanCooldown.shouldIgnore(trimmed)) return;
 
     setState(() {
       _isProcessing = true;
@@ -51,7 +57,7 @@ class _ScannerPageState extends State<ScannerPage> {
     try {
       final response = await _apiClient.get(
         '/scan/resolve',
-        queryParameters: {'code': rawCode.trim()},
+        queryParameters: {'code': trimmed},
       );
 
       final data = response.data['data'];
@@ -59,13 +65,18 @@ class _ScannerPageState extends State<ScannerPage> {
       final String id = data['id'];
 
       if (!mounted) return;
+      _scanCooldown.reset();
 
       // Handle based on ScanPurpose
       if (widget.purpose == ScanPurpose.feeding) {
         if (type != 'spot') {
           throw Exception('QR_WRONG_TYPE: Harap pindai QR titik makan resmi Meowtopia.');
         }
-        context.push('/feeding/record', extra: {'spot_id': id, 'name': data['name']});
+        FeedingSpotActions.primarySpotAction.onExecute(
+          context,
+          spotId: id,
+          qrToken: trimmed,
+        );
       } else if (widget.purpose == ScanPurpose.encounter) {
         if (type != 'cat') {
           throw Exception('QR_WRONG_TYPE: Harap pindai QR kalung kucing Meowtopia.');
@@ -80,6 +91,9 @@ class _ScannerPageState extends State<ScannerPage> {
         }
       }
     } catch (e) {
+      if (fromCamera) {
+        _scanCooldown.recordFailure(trimmed);
+      }
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -154,10 +168,62 @@ class _ScannerPageState extends State<ScannerPage> {
               for (final barcode in barcodes) {
                 final rawValue = barcode.rawValue;
                 if (rawValue != null && rawValue.isNotEmpty) {
-                  _handleCode(rawValue);
+                  _handleCode(rawValue, fromCamera: true);
                   break;
                 }
               }
+            },
+            errorBuilder: (context, error, child) {
+              final info = describeCameraScannerError(error.errorCode);
+              return Container(
+                color: const Color(0xFF1F2937),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.no_photography_outlined,
+                      color: Colors.amber,
+                      size: 42,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      info.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      info.message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        height: 1.5,
+                      ),
+                    ),
+                    if (info.showOpenSettings) ...[
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.amber),
+                        ),
+                        onPressed: () async {
+                          try {
+                            await Geolocator.openAppSettings();
+                          } catch (_) {}
+                        },
+                        icon: const Icon(Icons.settings_outlined),
+                        label: const Text('Buka Pengaturan'),
+                      ),
+                    ],
+                  ],
+                ),
+              );
             },
           ),
           if (_isProcessing)

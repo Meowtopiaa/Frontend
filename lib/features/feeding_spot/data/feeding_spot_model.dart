@@ -276,3 +276,91 @@ class FeedingSpotModel {
     return '${(distanceMeters! / 1000).toStringAsFixed(1)} km dari lokasimu';
   }
 }
+
+/// Representasi satu titik heatmap aktivitas pemberian makan 14 hari terakhir
+/// sesuai kontrak Backend `GET /api/v1/feeding/heatmap?days=14` (MEOW-26).
+class FeedingHeatmapPoint {
+  final String spotId;
+  final String code;
+  final String name;
+  final double latitude;
+  final double longitude;
+  final String? territoryId;
+  final int windowDays;
+  final int totalFeedings;
+  final int verifiedCount;
+  final int pendingCount;
+  final double needScore;
+  final DateTime? lastFedAt;
+
+  const FeedingHeatmapPoint({
+    required this.spotId,
+    required this.code,
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+    this.territoryId,
+    this.windowDays = 14,
+    this.totalFeedings = 0,
+    this.verifiedCount = 0,
+    this.pendingCount = 0,
+    this.needScore = 100,
+    this.lastFedAt,
+  });
+
+  factory FeedingHeatmapPoint.fromJson(Map<String, dynamic> json) {
+    final rawLastFed = json['last_fed_at']?.toString();
+    return FeedingHeatmapPoint(
+      spotId: (json['spot_id'] ?? json['id'] ?? '').toString(),
+      code: (json['code'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      latitude: double.tryParse((json['latitude'] ?? '0').toString()) ?? 0.0,
+      longitude: double.tryParse((json['longitude'] ?? '0').toString()) ?? 0.0,
+      territoryId: json['territory_id']?.toString(),
+      windowDays: (json['window_days'] as num?)?.toInt() ?? 14,
+      totalFeedings: (json['total_feedings'] as num?)?.toInt() ?? 0,
+      verifiedCount: (json['verified_count'] as num?)?.toInt() ?? 0,
+      pendingCount: (json['pending_count'] as num?)?.toInt() ?? 0,
+      needScore: (json['need_score'] as num?)?.toDouble() ?? 100.0,
+      lastFedAt: rawLastFed != null ? DateTime.tryParse(rawLastFed) : null,
+    );
+  }
+
+  factory FeedingHeatmapPoint.fromSpot(
+    FeedingSpotModel spot, {
+    int windowDays = 14,
+  }) {
+    final verified = spot.verifiedCount14Days ?? spot.activitiesCount;
+    final coverage = windowDays <= 0
+        ? 0.0
+        : (verified / windowDays).clamp(0.0, 1.0);
+    final computedNeed = spot.needScore ?? ((1.0 - coverage) * 100.0);
+    return FeedingHeatmapPoint(
+      spotId: spot.id,
+      code: spot.code,
+      name: spot.name,
+      latitude: spot.latitude,
+      longitude: spot.longitude,
+      territoryId: spot.territoryId,
+      windowDays: windowDays,
+      totalFeedings: verified,
+      verifiedCount: verified,
+      pendingCount: spot.hasPendingReview ? 1 : 0,
+      needScore: computedNeed,
+      lastFedAt: spot.lastFedAt,
+    );
+  }
+
+  /// Cakupan aktivitas tercatat dalam rentang [windowDays] (0.0 sampai 1.0).
+  double get coverage =>
+      windowDays <= 0 ? 0.0 : (verifiedCount / windowDays).clamp(0.0, 1.0);
+
+  bool get isLowActivity => verifiedCount < 4;
+  bool get isMediumActivity => verifiedCount >= 4 && verifiedCount < 10;
+
+  String get activityBucketLabel {
+    if (isLowActivity) return 'Jarang tercatat';
+    if (isMediumActivity) return 'Cukup tercatat';
+    return 'Rutin tercatat';
+  }
+}

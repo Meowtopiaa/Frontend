@@ -145,12 +145,20 @@ class CampusSpotMap extends StatefulWidget {
     this.selectedId,
     required this.isDemo,
     this.isFullScreen = false,
+    this.heatmapPoints = const [],
+    this.showHeatmap = false,
+    this.onToggleHeatmap,
+    this.simulateTileError = false,
   });
 
   final List<FeedingSpotModel> spots;
   final String? selectedId;
   final bool isDemo;
   final bool isFullScreen;
+  final List<FeedingHeatmapPoint> heatmapPoints;
+  final bool showHeatmap;
+  final VoidCallback? onToggleHeatmap;
+  final bool simulateTileError;
 
   @override
   State<CampusSpotMap> createState() => _CampusSpotMapState();
@@ -163,6 +171,24 @@ class _CampusSpotMapState extends State<CampusSpotMap> {
   String? _selectedSpotId;
   bool _isOutOfCampus = false;
   bool _locating = false;
+  bool _tileLoadFailed = false;
+  bool _tileErrorDismissed = false;
+  bool? _localShowHeatmap;
+  int _tileLayerGeneration = 0;
+
+  bool get _effectiveShowHeatmap => _localShowHeatmap ?? widget.showHeatmap;
+
+  List<FeedingHeatmapPoint> get _effectiveHeatmapPoints {
+    if (widget.heatmapPoints.isNotEmpty) {
+      return widget.heatmapPoints
+          .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
+          .toList();
+    }
+    return widget.spots
+        .where((s) => s.latitude != 0.0 && s.longitude != 0.0)
+        .map(FeedingHeatmapPoint.fromSpot)
+        .toList();
+  }
 
   // Telkom University Center (Gedung Bangkit / Danau Galau)
   static const LatLng campusCenter = LatLng(-6.9732, 107.6304);
@@ -263,6 +289,7 @@ class _CampusSpotMapState extends State<CampusSpotMap> {
   void initState() {
     super.initState();
     _selectedSpotId = widget.selectedId;
+    _tileLoadFailed = widget.simulateTileError;
     if (_cachedUserLocation != null) {
       _userLocation = _cachedUserLocation;
       _isOutOfCampus = !isPointInsideCampus(_cachedUserLocation!);
@@ -276,6 +303,33 @@ class _CampusSpotMapState extends State<CampusSpotMap> {
     if (widget.selectedId != oldWidget.selectedId && widget.selectedId != null) {
       _selectedSpotId = widget.selectedId;
     }
+    if (widget.showHeatmap != oldWidget.showHeatmap) {
+      _localShowHeatmap = null;
+    }
+    if (widget.simulateTileError != oldWidget.simulateTileError) {
+      _tileLoadFailed = widget.simulateTileError;
+      if (!widget.simulateTileError) _tileErrorDismissed = false;
+    }
+  }
+
+  void _handleToggleHeatmap() {
+    if (widget.onToggleHeatmap != null) {
+      widget.onToggleHeatmap!();
+    } else {
+      setState(() => _localShowHeatmap = !_effectiveShowHeatmap);
+    }
+  }
+
+  Color _heatmapFillColor(FeedingHeatmapPoint point) {
+    if (point.isLowActivity) return const Color(0x59EA580C);
+    if (point.isMediumActivity) return const Color(0x59F59E0B);
+    return const Color(0x5216A34A);
+  }
+
+  Color _heatmapBorderColor(FeedingHeatmapPoint point) {
+    if (point.isLowActivity) return const Color(0xB3EA580C);
+    if (point.isMediumActivity) return const Color(0xB3D97706);
+    return const Color(0xB315803D);
   }
 
   Future<void> _checkUserLocation({bool moveToLocation = true}) async {
@@ -380,11 +434,36 @@ class _CampusSpotMapState extends State<CampusSpotMap> {
               ),
               children: [
                 TileLayer(
+                  key: ValueKey('osm-tiles-$_tileLayerGeneration'),
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'id.meowtopia.meowtopia',
+                  errorTileCallback: (tile, error, stackTrace) {
+                    if (mounted && !_tileLoadFailed) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && !_tileLoadFailed) {
+                          setState(() => _tileLoadFailed = true);
+                        }
+                      });
+                    }
+                  },
                 ),
                 // Area Luar Jangkauan Kampus (Diagonal Orange Hatch Lines + Grid Boundary sesuai acuan)
                 const _CampusBoundaryOverlay(boundary: telkomBoundary),
+                // Layer Heatmap Aktivitas Tercatat 14 Hari (MEOW-26)
+                if (_effectiveShowHeatmap && _effectiveHeatmapPoints.isNotEmpty)
+                  CircleLayer(
+                    circles: [
+                      for (final point in _effectiveHeatmapPoints)
+                        CircleMarker(
+                          point: LatLng(point.latitude, point.longitude),
+                          radius: 28 + (point.coverage * 18),
+                          useRadiusInMeter: true,
+                          color: _heatmapFillColor(point),
+                          borderColor: _heatmapBorderColor(point),
+                          borderStrokeWidth: 1.5,
+                        ),
+                    ],
+                  ),
                 MarkerLayer(
                   markers: [
                     // Marker Spot Pakan
@@ -501,10 +580,44 @@ class _CampusSpotMapState extends State<CampusSpotMap> {
                       ],
                     ),
                   ),
+                  if (_effectiveShowHeatmap)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.94),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: MeowStyle.peach),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.circle, size: 9, color: Color(0xFFEA580C)),
+                          SizedBox(width: 3),
+                          Text(
+                            'Jarang',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: MeowStyle.ink),
+                          ),
+                          SizedBox(width: 6),
+                          Icon(Icons.circle, size: 9, color: Color(0xFFD97706)),
+                          SizedBox(width: 3),
+                          Text(
+                            'Cukup',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: MeowStyle.ink),
+                          ),
+                          SizedBox(width: 6),
+                          Icon(Icons.circle, size: 9, color: Color(0xFF16A34A)),
+                          SizedBox(width: 3),
+                          Text(
+                            'Rutin (14h)',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: MeowStyle.ink),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
-            // Tombol Kontrol Kanan Atas: Center ke Kampus & Focus ke Lokasi Saya
+            // Tombol Kontrol Kanan Atas: Center ke Kampus, Focus ke Lokasi Saya, & Toggle Heatmap 14h
             Positioned(
               top: 10,
               right: 10,
@@ -547,9 +660,120 @@ class _CampusSpotMapState extends State<CampusSpotMap> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // Tombol Toggle Layer Heatmap 14 Hari (MEOW-26)
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor:
+                        _effectiveShowHeatmap ? MeowStyle.orange : Colors.white,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      tooltip: _effectiveShowHeatmap
+                          ? 'Sembunyikan heatmap 14 hari'
+                          : 'Tampilkan heatmap 14 hari',
+                      onPressed: _handleToggleHeatmap,
+                      icon: Icon(
+                        Icons.local_fire_department_rounded,
+                        size: 20,
+                        color: _effectiveShowHeatmap
+                            ? Colors.white
+                            : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
+            // Banner Offline / Gagal Memuat Tile Peta (MEOW-26)
+            if (_tileLoadFailed && !_tileErrorDismissed)
+              Positioned(
+                top: _isOutOfCampus ? 104 : 64,
+                left: 10,
+                right: 58,
+                child: Semantics(
+                  liveRegion: true,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFCD34D)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.wifi_off_rounded,
+                            color: Color(0xFFB45309),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Peta gagal dimuat atau tidak ada koneksi. Daftar spot tetap dapat digunakan.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF92400E),
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () => setState(() {
+                                  _tileLoadFailed = false;
+                                  _tileLayerGeneration++;
+                                }),
+                                child: const Text(
+                                  'Muat ulang peta',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: MeowStyle.orangeDark,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            tooltip: 'Tutup peringatan peta',
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: Color(0xFF92400E),
+                            ),
+                            onPressed: () =>
+                                setState(() => _tileErrorDismissed = true),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             // Banner Peringatan Luar Jangkauan
             if (_isOutOfCampus)
               Positioned(

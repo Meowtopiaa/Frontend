@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
+import 'package:meowtopia/core/hub/cat_action_registry.dart';
+import 'package:meowtopia/core/hub/register_actions.dart';
 import 'package:meowtopia/core/scanner/qr_parser.dart';
 import 'package:meowtopia/core/widgets/loading_indicator.dart';
 import 'package:meowtopia/core/widgets/page_transition_overlay.dart';
 import 'package:meowtopia/core/widgets/walking_cat_loader.dart';
 import 'package:meowtopia/features/feeding_spot/data/feeding_spot_model.dart';
+import 'package:meowtopia/features/feeding_spot/feeding_spot_actions.dart';
 import 'package:meowtopia/features/feeding_spot/logic/feeding_spot_provider.dart';
+import 'package:meowtopia/features/feeding_spot/ui/feeding_widgets.dart';
+import 'package:meowtopia/features/feeding_spot/ui/scan_spot_page.dart';
 
 void main() {
   group('QR Parser Unit Tests (MEOW-27 & MEOW-28)', () {
@@ -340,5 +347,274 @@ void main() {
       router.dispose();
       transitionNotifier.dispose();
     });
+  });
+
+  group('Hub Action Registration Tests (MEOW-18)', () {
+    testWidgets(
+      'registerDefaultCatActions mendaftarkan feeding.start dan menavigasi ke /feeding/scan',
+      (tester) async {
+        registerDefaultCatActions();
+        final action = CatActionRegistry.byId(
+          FeedingSpotActions.startFeedingActionKey,
+        );
+        expect(action, isNotNull);
+        expect(action!.id, 'feeding.start');
+
+        String? navigatedUri;
+        final router = GoRouter(
+          initialLocation: '/cat',
+          routes: [
+            GoRoute(
+              path: '/cat',
+              builder: (context, _) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => action.onTap(context, '01CAT123'),
+                  child: const Text('Mulai Makan'),
+                ),
+              ),
+            ),
+            GoRoute(
+              path: '/feeding/scan',
+              builder: (_, state) {
+                navigatedUri = state.uri.toString();
+                return const Scaffold(body: Text('Scan Page'));
+              },
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.tap(find.text('Mulai Makan'));
+        await tester.pumpAndSettle();
+
+        expect(navigatedUri, '/feeding/scan?cat_id=01CAT123');
+        expect(find.text('Scan Page'), findsOneWidget);
+        router.dispose();
+      },
+    );
+
+    test('openSession menyimpan catId saat dipicu dari aksi Hub kucing', () async {
+      final provider = FeedingSpotProvider(isDemo: true);
+      final spot = provider.spots.firstWhere((s) => s.isActive);
+      final session = await provider.openSession(
+        spot.qrToken,
+        catId: '01CAT999',
+      );
+      expect(session.catId, '01CAT999');
+    });
+  });
+
+  group('Map Tile Error & 14-Day Heatmap Tests (MEOW-26)', () {
+    test('FeedingHeatmapPoint.fromJson memetakan kontrak /feeding/heatmap', () {
+      final point = FeedingHeatmapPoint.fromJson({
+        'spot_id': '01SPOT00000000000000000001',
+        'code': 'SPOT-TULT-01',
+        'name': 'Shelter TULT',
+        'latitude': -6.9693,
+        'longitude': 107.62815,
+        'window_days': 14,
+        'total_feedings': 5,
+        'verified_count': 3,
+        'pending_count': 2,
+        'need_score': 78.57,
+        'last_fed_at': '2026-11-24T08:00:00Z',
+      });
+
+      expect(point.spotId, '01SPOT00000000000000000001');
+      expect(point.verifiedCount, 3);
+      expect(point.isLowActivity, isTrue);
+      expect(point.activityBucketLabel, 'Jarang tercatat');
+      expect(point.coverage, closeTo(3 / 14, 0.001));
+    });
+
+    test('FeedingSpotProvider menyediakan heatmapPoints dan toggleHeatmap', () {
+      final provider = FeedingSpotProvider(isDemo: true);
+      expect(provider.showHeatmap, isFalse);
+      expect(provider.heatmapPoints, isNotEmpty);
+      expect(
+        provider.heatmapPoints.every(
+          (p) => provider.spots.any((s) => s.id == p.spotId),
+        ),
+        isTrue,
+      );
+
+      provider.toggleHeatmap();
+      expect(provider.showHeatmap, isTrue);
+      provider.toggleHeatmap(false);
+      expect(provider.showHeatmap, isFalse);
+    });
+
+    testWidgets(
+      'CampusSpotMap menampilkan banner error tile saat gagal muat & toggle legend heatmap 14 hari',
+      (tester) async {
+        final provider = FeedingSpotProvider(isDemo: true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: CampusSpotMap(
+                spots: provider.spots,
+                isDemo: true,
+                heatmapPoints: provider.heatmapPoints,
+                simulateTileError: true,
+              ),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        expect(
+          find.text(
+            'Peta gagal dimuat atau tidak ada koneksi. Daftar spot tetap dapat digunakan.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Rutin (14h)'), findsNothing);
+
+        await tester.tap(find.byTooltip('Tampilkan heatmap 14 hari'));
+        await tester.pump();
+        expect(find.text('Jarang'), findsOneWidget);
+        expect(find.text('Cukup'), findsOneWidget);
+        expect(find.text('Rutin (14h)'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Tutup peringatan peta'));
+        await tester.pump();
+        expect(
+          find.text(
+            'Peta gagal dimuat atau tidak ada koneksi. Daftar spot tetap dapat digunakan.',
+          ),
+          findsNothing,
+        );
+      },
+    );
+  });
+
+  group('Camera Permission UX & QR Error Debounce Tests (MEOW-27)', () {
+    test(
+      'QrScanCooldown mencegah spam scan QR gagal yang sama selama durasi cooldown',
+      () {
+        final cooldown = QrScanCooldown(
+          cooldown: const Duration(milliseconds: 2500),
+        );
+        final t0 = DateTime(2026, 11, 25, 10, 0, 0);
+
+        expect(cooldown.shouldIgnore('MTP1.C.CAT01', now: t0), isFalse);
+
+        cooldown.recordFailure('MTP1.C.CAT01', now: t0);
+        // Token yang sama dalam 1 detik diabaikan
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.C.CAT01',
+            now: t0.add(const Duration(seconds: 1)),
+          ),
+          isTrue,
+        );
+        // Token berbeda tetap diproses langsung
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.S.SPOT-TULT-01',
+            now: t0.add(const Duration(seconds: 1)),
+          ),
+          isFalse,
+        );
+        // Setelah cooldown berlalu, token yang sama boleh dicoba lagi
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.C.CAT01',
+            now: t0.add(const Duration(seconds: 3)),
+          ),
+          isFalse,
+        );
+
+        cooldown.recordFailure('MTP1.C.CAT01', now: t0);
+        cooldown.reset();
+        expect(
+          cooldown.shouldIgnore(
+            'MTP1.C.CAT01',
+            now: t0.add(const Duration(milliseconds: 500)),
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'describeCameraScannerError membedakan izin ditolak dan kamera tidak tersedia',
+      () {
+        final denied = describeCameraScannerError(
+          MobileScannerErrorCode.permissionDenied,
+        );
+        expect(denied.title, 'Izin Kamera Ditolak');
+        expect(denied.showOpenSettings, isTrue);
+
+        final unsupported = describeCameraScannerError(
+          MobileScannerErrorCode.unsupported,
+        );
+        expect(unsupported.title, 'Kamera Tidak Tersedia');
+        expect(unsupported.showOpenSettings, isFalse);
+
+        final generic = describeCameraScannerError(
+          MobileScannerErrorCode.genericError,
+        );
+        expect(generic.title, 'Kamera Tidak Dapat Dibuka');
+        expect(generic.showOpenSettings, isTrue);
+      },
+    );
+
+    testWidgets(
+      'ScanSpotPage mendukung input kode manual fallback saat QR salah dan saat valid',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final provider = FeedingSpotProvider(isDemo: true);
+        final router = GoRouter(
+          initialLocation: '/feeding/scan',
+          routes: [
+            GoRoute(
+              path: '/feeding/scan',
+              builder: (_, __) => const ScanSpotPage(),
+            ),
+            GoRoute(
+              path: '/feeding/record',
+              builder: (_, __) => const Scaffold(body: Text('Record Page')),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ChangeNotifierProvider<FeedingSpotProvider>.value(
+            value: provider,
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+
+        // Buka dialog input manual dan masukkan QR kucing (harus muncul QR_WRONG_TYPE)
+        final manualBtn = find.text('Input kode manual spot');
+        await tester.ensureVisible(manualBtn);
+        await tester.tap(manualBtn);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'MTP1.C.CAT01');
+        await tester.tap(find.text('Gunakan Kode'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('QR_WRONG_TYPE'), findsOneWidget);
+
+        // Masukkan kode manual spot valid -> berpindah ke halaman record
+        final activeSpot = provider.spots.firstWhere((s) => s.isActive);
+        await tester.ensureVisible(manualBtn);
+        await tester.tap(manualBtn);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), activeSpot.code);
+        await tester.tap(find.text('Gunakan Kode'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Record Page'), findsOneWidget);
+        expect(provider.session?.spot.id, activeSpot.id);
+        router.dispose();
+      },
+    );
   });
 }

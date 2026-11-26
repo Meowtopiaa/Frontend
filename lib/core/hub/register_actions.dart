@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../features/feeding_spot/feeding_spot_actions.dart';
 import 'cat_action_registry.dart';
 
 void registerDefaultCatActions() {
@@ -39,16 +41,7 @@ void registerDefaultCatActions() {
     ),
   );
 
-  // 4. Feeding Spot Action
-  CatActionRegistry.register(
-    CatActionSpec(
-      id: 'feeding.start',
-      label: 'Beri Makan di Titik Spot',
-      icon: Icons.restaurant,
-      onTap: (context, catId) {
-        context.push('/feeding-spots');
-      },
-    ),
-  );
+  // 4. Feeding Spot Action (Adopt Feeding Spot)
+  registerFeedingSpotActions();
 }
 

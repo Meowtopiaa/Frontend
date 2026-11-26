@@ -34,6 +34,18 @@ class FeedingSpotService {
     return FeedingSpotModel.fromJson(data);
   }
 
+  Future<List<FeedingHeatmapPoint>> getHeatmap({int days = 14}) async {
+    final response = await _client.get(
+      '/feeding/heatmap',
+      queryParameters: {'days': days},
+    );
+    final list = (response.data['data'] as List?) ?? const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(FeedingHeatmapPoint.fromJson)
+        .toList();
+  }
+
   Future<Map<String, dynamic>> openSession({
     required String qrToken,
     String? idempotencyKey,
