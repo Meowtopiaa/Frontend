@@ -27,6 +27,19 @@ class AdoptionCatalogCat {
     this.photoUrl,
   });
 
+  /// Menyalin dengan URL foto yang sudah dibentuk oleh repository.
+  AdoptionCatalogCat withPhotoUrl(String? url) => AdoptionCatalogCat(
+        id: id,
+        name: name,
+        gender: gender,
+        ageGroup: ageGroup,
+        colorPattern: colorPattern,
+        isSterilized: isSterilized,
+        description: description,
+        primaryPhotoMediaId: primaryPhotoMediaId,
+        photoUrl: url,
+      );
+
   /// Membaca satu item katalog. Field lain yang mungkin ikut terkirim diabaikan.
   factory AdoptionCatalogCat.fromJson(Map<String, dynamic> json) {
     return AdoptionCatalogCat(

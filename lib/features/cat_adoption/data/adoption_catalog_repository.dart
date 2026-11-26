@@ -25,9 +25,24 @@ class ApiAdoptionCatalogRepository implements AdoptionCatalogRepository {
   static const int maxPages = 5;
   static const int perPage = 50;
 
-  /// [get] dapat diganti di tes; bawaannya memakai ApiClient milik Core.
-  ApiAdoptionCatalogRepository({CatalogGet? get})
-      : _get = get ?? ApiClient().get;
+  final String? _baseUrl;
+
+  /// [get] dan [baseUrl] dapat diganti di tes; bawaannya memakai ApiClient Core.
+  ApiAdoptionCatalogRepository({CatalogGet? get, String? baseUrl})
+      : _get = get ?? ApiClient().get,
+        _baseUrl = baseUrl;
+
+  /// Foto rujukan lewat route publik modul Cat:
+  /// GET /cats/{id}/photos/{mediaId}. Server hanya melayani foto yang
+  /// memang terpasang ke kucing itu.
+  String? _photoUrl(AdoptionCatalogCat cat) {
+    final mediaId = cat.primaryPhotoMediaId;
+    if (mediaId == null) return null;
+    var base = _baseUrl ?? ApiClient().dio.options.baseUrl;
+    if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+    return '$base/cats/${Uri.encodeComponent(cat.id)}'
+        '/photos/${Uri.encodeComponent(mediaId)}';
+  }
 
   @override
   Future<List<AdoptionCatalogCat>> getCatalog() async {
@@ -56,7 +71,8 @@ class ApiAdoptionCatalogRepository implements AdoptionCatalogRepository {
       cats.addAll(
         (body['data'] as List)
             .whereType<Map<String, dynamic>>()
-            .map(AdoptionCatalogCat.fromJson),
+            .map(AdoptionCatalogCat.fromJson)
+            .map((cat) => cat.withPhotoUrl(_photoUrl(cat))),
       );
 
       final meta = body['meta'];

@@ -133,6 +133,25 @@ void main() {
       );
     });
 
+    test('membentuk URL foto publik dari primary_photo_media_id', () async {
+      final repo = ApiAdoptionCatalogRepository(
+        baseUrl: 'http://api.test/api/v1/',
+        get: (path, {queryParameters}) async => jsonResponse({
+          'success': true,
+          'message': 'ok',
+          'data': [
+            {'id': 'CAT1', 'name': 'Miko', 'primary_photo_media_id': 'MED1'},
+            {'id': 'CAT2', 'name': 'Luna'},
+          ],
+        }),
+      );
+
+      final cats = await repo.getCatalog();
+
+      expect(cats[0].photoUrl, 'http://api.test/api/v1/cats/CAT1/photos/MED1');
+      expect(cats[1].photoUrl, isNull);
+    });
+
     test('menolak respons yang bentuknya tidak dikenali', () async {
       final repo = ApiAdoptionCatalogRepository(
         get: (path, {queryParameters}) async =>
