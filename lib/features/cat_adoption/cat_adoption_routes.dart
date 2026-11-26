@@ -95,19 +95,16 @@ final List<RouteBase> catAdoptionRoutes = [
         },
       ),
 
-      // Laporan Kendala (ADP-13)
+      // Laporan Kendala (ADP-13, EN-23). ID adopsi berupa ULID string.
       GoRoute(
         path: 'issue',
         builder: (context, state) {
           final adoptionId =
-              int.tryParse(state.uri.queryParameters['adoption_id'] ?? '0') ?? 0;
-          final catId =
-              int.tryParse(state.uri.queryParameters['cat_id'] ?? '0') ?? 0;
+              state.uri.queryParameters['adoption_id']?.trim() ?? '';
           final catName =
               state.uri.queryParameters['name'] ?? 'Kucing Saya';
           return AdoptionIssueReportPage(
             adoptionId: adoptionId,
-            catId: catId,
             catName: catName,
           );
         },

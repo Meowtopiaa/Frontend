@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/widgets/loading_indicator.dart';
-import '../data/adoption_model.dart';
+import '../data/my_adoption_model.dart';
 import '../logic/adoption_provider.dart';
 import 'adoption_theme.dart';
 import 'adoption_widgets.dart';
@@ -26,8 +26,10 @@ class _MyCatsPageState extends State<MyCatsPage> {
 
   Future<void> _reload() async {
     final provider = context.read<AdoptionProvider>();
-    await provider.fetchMyActiveAdoptions();
-    await provider.fetchMyApplications();
+    await Future.wait([
+      provider.fetchMyAdoptions(),
+      provider.fetchMyEligibility(),
+    ]);
   }
 
   @override
@@ -50,11 +52,12 @@ class _MyCatsPageState extends State<MyCatsPage> {
           const SizedBox(width: 4),
         ],
       ),
-      body: provider.isLoading
+      // Gagal memuat ditampilkan sebagai error, bukan sebagai daftar kosong.
+      body: provider.isMyAdoptionsLoading && provider.myAdoptions.isEmpty
           ? const LoadingIndicator(message: 'Memuat adopsimu...')
-          : provider.errorMessage != null
+          : provider.myAdoptionsError != null
               ? AdoptionErrorState(
-                  message: provider.errorMessage!,
+                  message: provider.myAdoptionsError!,
                   onRetry: _reload,
                 )
               : RefreshIndicator(
@@ -69,7 +72,7 @@ class _MyCatsPageState extends State<MyCatsPage> {
                             'Kucing yang sedang kamu rawat dan laporan kondisinya.',
                         icon: Icons.favorite_rounded,
                       ),
-                      if (provider.myActiveAdoptions.isEmpty)
+                      if (provider.myAdoptions.isEmpty)
                         AdoptionEmptyState(
                           message: 'Kamu belum mengadopsi kucing',
                           submessage:
@@ -81,7 +84,7 @@ class _MyCatsPageState extends State<MyCatsPage> {
                           ),
                         )
                       else
-                        ...provider.myActiveAdoptions.map(
+                        ...provider.myAdoptions.map(
                           (adoption) => _AdoptionBlock(adoption: adoption),
                         ),
                       const SizedBox(height: 8),
@@ -92,31 +95,63 @@ class _MyCatsPageState extends State<MyCatsPage> {
     );
   }
 
+  /// Status kelayakan ditampilkan terpisah dari adopsi (ADP-08). Kelayakan
+  /// disetujui belum berarti punya kucing.
   Widget _buildEligibilitySection(AdoptionProvider provider) {
-    final apps = provider.myApplications;
+    final apps = provider.myEligibility;
     final latest = apps.isEmpty ? null : apps.first;
+
+    final Widget status;
+    if (provider.isEligibilityLoading && apps.isEmpty) {
+      status = const Text('Memuat status kelayakan...',
+          style: AdoptionTheme.bodyStyle);
+    } else if (provider.eligibilityError != null) {
+      status = Text(
+        'Status kelayakan belum bisa dimuat. Tarik ke bawah untuk mencoba lagi.',
+        style: AdoptionTheme.bodyStyle.copyWith(color: AdoptionTheme.danger),
+      );
+    } else if (latest == null) {
+      status =
+          const Text('Belum ada pengajuan.', style: AdoptionTheme.bodyStyle);
+    } else {
+      status = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ApplicationStatusBadge(status: latest.status),
+          if (latest.adminNote != null) ...[
+            const SizedBox(height: 8),
+            Text('Catatan pengurus: ${latest.adminNote}',
+                style: AdoptionTheme.bodyStyle),
+          ],
+        ],
+      );
+    }
+
+    // Halaman detail pengajuan masih memakai id angka (Sprint 1), jadi
+    // tautannya hanya muncul di mode demo.
+    Widget? action;
+    if (provider.eligibilityError == null) {
+      if (latest == null) {
+        action = TextButton(
+          style: TextButton.styleFrom(foregroundColor: AdoptionTheme.accent),
+          onPressed: () => context.push('/adoption/apply'),
+          child: const Text('Isi form kelayakan'),
+        );
+      } else if (provider.legacyPagesSupported) {
+        action = TextButton(
+          style: TextButton.styleFrom(foregroundColor: AdoptionTheme.accent),
+          onPressed: () => context.push('/adoption/detail/${latest.id}'),
+          child: const Text('Lihat rincian'),
+        );
+      }
+    }
 
     return AdoptionSection(
       title: 'Status kelayakan',
       child: Row(
         children: [
-          Expanded(
-            child: latest == null
-                ? const Text('Belum ada pengajuan.',
-                    style: AdoptionTheme.bodyStyle)
-                : Align(
-                    alignment: Alignment.centerLeft,
-                    child: ApplicationStatusBadge(status: latest.status),
-                  ),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AdoptionTheme.accent),
-            onPressed: () => latest == null
-                ? context.push('/adoption/apply')
-                : context.push('/adoption/detail/${latest.id}'),
-            child:
-                Text(latest == null ? 'Isi form kelayakan' : 'Lihat rincian'),
-          ),
+          Expanded(child: status),
+          if (action != null) action,
         ],
       ),
     );
@@ -130,7 +165,8 @@ class _MyCatsPageState extends State<MyCatsPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final apps = provider.myApplications;
+        final apps = provider.myEligibility;
+        final canOpen = provider.legacyPagesSupported;
         return Padding(
           padding: EdgeInsets.fromLTRB(
               20, 8, 20, MediaQuery.paddingOf(ctx).bottom + 16),
@@ -151,7 +187,13 @@ class _MyCatsPageState extends State<MyCatsPage> {
                   ),
                 ],
               ),
-              if (apps.isEmpty)
+              if (provider.eligibilityError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(provider.eligibilityError!,
+                      style: AdoptionTheme.bodyStyle),
+                )
+              else if (apps.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Text('Belum ada pengajuan.',
@@ -169,7 +211,9 @@ class _MyCatsPageState extends State<MyCatsPage> {
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
-                          item.catName ?? 'Belum memilih kucing',
+                          item.submittedAt == null
+                              ? 'Belum dikirim'
+                              : 'Dikirim ${formatAdoptionDate(item.submittedAt!)}',
                           style: AdoptionTheme.subtitleStyle,
                         ),
                         subtitle: Padding(
@@ -179,12 +223,15 @@ class _MyCatsPageState extends State<MyCatsPage> {
                             child: ApplicationStatusBadge(status: item.status),
                           ),
                         ),
-                        trailing:
-                            const Icon(Icons.chevron_right_rounded, size: 20),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          context.push('/adoption/detail/${item.id}');
-                        },
+                        trailing: canOpen
+                            ? const Icon(Icons.chevron_right_rounded, size: 20)
+                            : null,
+                        onTap: canOpen
+                            ? () {
+                                Navigator.pop(ctx);
+                                context.push('/adoption/detail/${item.id}');
+                              }
+                            : null,
                       );
                     },
                   ),
@@ -197,31 +244,43 @@ class _MyCatsPageState extends State<MyCatsPage> {
   }
 }
 
-/// Satu adopsi: identitas kucing, laporan berikutnya, dan aksi lain.
+/// Satu adopsi ACTIVE: identitas kucing, laporan berikutnya, dan aksi lain.
 class _AdoptionBlock extends StatelessWidget {
-  final ActiveAdoptionModel adoption;
+  final MyAdoption adoption;
 
   const _AdoptionBlock({required this.adoption});
 
   @override
   Widget build(BuildContext context) {
-    final cat = adoption.cat;
-    final catName = cat?.name ?? 'Kucing adopsi';
-    final total = adoption.totalFollowups > 0 ? adoption.totalFollowups : 6;
-    final done = adoption.completedFollowups.clamp(0, total);
-    final allDone = done >= total;
-    final currentCycle = done + 1;
-    final diffDays = adoption.nextFollowupDue.difference(DateTime.now()).inDays;
-    final isLate = !allDone && diffDays < 0;
+    final catName = adoption.catName;
+    final total = adoption.totalFollowups;
+    final done = adoption.completedFollowups;
+    final next = adoption.nextFollowup;
+    final isLate = adoption.isNextFollowupLate(DateTime.now().toUtc());
     final encodedName = Uri.encodeComponent(catName);
+    final encodedId = Uri.encodeComponent(adoption.id);
+    final legacyPages = context.read<AdoptionProvider>().legacyPagesSupported;
+    final details = [
+      if (adoption.genderLabel != null) adoption.genderLabel!,
+      if (adoption.pickedUpAt != null)
+        'Diadopsi sejak ${formatAdoptionDate(adoption.pickedUpAt!)}',
+    ];
 
-    final dueText = allDone
-        ? 'Semua laporan tiga bulan pertama sudah dikirim.'
-        : isLate
-            ? 'Laporan ke-$currentCycle terlambat ${diffDays.abs()} hari. '
-                'Kirim sekarang, laporan terlambat tetap diterima.'
-            : 'Laporan ke-$currentCycle paling lambat '
-                '${formatAdoptionDate(adoption.nextFollowupDue)}.';
+    final String dueText;
+    if (!adoption.hasSchedule) {
+      dueText = 'Jadwal laporan kondisi belum tersedia.';
+    } else if (next == null) {
+      dueText = 'Semua laporan tiga bulan pertama sudah dikirim.';
+    } else if (next.dueAt == null) {
+      dueText = 'Laporan ke-${next.periodNo} belum punya batas waktu.';
+    } else if (isLate) {
+      dueText = 'Laporan ke-${next.periodNo} sudah lewat batas '
+          '${formatAdoptionDate(next.dueAt!)}. '
+          'Kirim sekarang, laporan terlambat tetap diterima.';
+    } else {
+      dueText = 'Laporan ke-${next.periodNo} paling lambat '
+          '${formatAdoptionDate(next.dueAt!)}.';
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -236,7 +295,7 @@ class _AdoptionBlock extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 88,
-                  child: CatPhotoBox(photoUrl: cat?.primaryPhotoUrl),
+                  child: CatPhotoBox(photoUrl: adoption.catPhotoUrl),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -245,15 +304,8 @@ class _AdoptionBlock extends StatelessWidget {
                     children: [
                       Text(catName, style: AdoptionTheme.headlineStyle),
                       const SizedBox(height: 4),
-                      if (cat != null)
-                        Text(
-                          '${cat.gender == 'male' ? 'Jantan' : 'Betina'}, ${cat.breed}',
-                          style: AdoptionTheme.bodyStyle,
-                        ),
-                      Text(
-                        'Diadopsi sejak ${formatAdoptionDate(adoption.adoptedAt)}',
-                        style: AdoptionTheme.bodyStyle,
-                      ),
+                      for (final line in details)
+                        Text(line, style: AdoptionTheme.bodyStyle),
                       const SizedBox(height: 8),
                       ActiveAdoptionStatusBadge(status: adoption.status),
                     ],
@@ -265,13 +317,17 @@ class _AdoptionBlock extends StatelessWidget {
           const SizedBox(height: 16),
           AdoptionSection(
             title: 'Laporan kondisi',
-            trailing: Text('$done dari $total terkirim',
-                style: AdoptionTheme.captionStyle),
+            trailing: adoption.hasSchedule
+                ? Text('$done dari $total terkirim',
+                    style: AdoptionTheme.captionStyle)
+                : null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _FollowupProgress(total: total, done: done, isLate: isLate),
-                const SizedBox(height: 12),
+                if (adoption.hasSchedule) ...[
+                  _FollowupProgress(total: total, done: done, isLate: isLate),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   dueText,
                   style: AdoptionTheme.bodyStyle.copyWith(
@@ -279,13 +335,13 @@ class _AdoptionBlock extends StatelessWidget {
                         isLate ? AdoptionTheme.danger : AdoptionTheme.textMain,
                   ),
                 ),
-                if (!allDone) ...[
+                if (next != null) ...[
                   const SizedBox(height: 14),
                   AdoptionPrimaryButton(
-                    label: 'Kirim laporan ke-$currentCycle',
+                    label: 'Kirim laporan ke-${next.periodNo}',
                     icon: Icons.photo_camera_outlined,
                     onPressed: () => context.push(
-                      '/adoption/followup?adoption_id=${adoption.id}&cycle=$currentCycle&cat_name=$encodedName',
+                      '/adoption/followup?adoption_id=$encodedId&cycle=${next.periodNo}&cat_name=$encodedName',
                     ),
                   ),
                 ],
@@ -301,16 +357,21 @@ class _AdoptionBlock extends StatelessWidget {
                   label: 'Laporkan kendala',
                   description: 'Sakit, hilang, meninggal, atau kalung rusak',
                   onTap: () => context.push(
-                    '/adoption/issue?adoption_id=${adoption.id}&cat_id=${adoption.catId}&name=$encodedName',
+                    '/adoption/issue?adoption_id=$encodedId&name=$encodedName',
                   ),
                 ),
                 const Divider(height: 1, color: AdoptionTheme.divider),
+                // Alur pengembalian (EN-22) belum tersambung ke server.
                 _LinkRow(
                   label: 'Ajukan pengembalian',
-                  description: 'Syarat dan alur pengembalian kucing',
-                  onTap: () => context.push(
-                    '/adoption/return?adoption_id=${adoption.id}&name=$encodedName',
-                  ),
+                  description: legacyPages
+                      ? 'Syarat dan alur pengembalian kucing'
+                      : 'Belum tersedia di aplikasi. Hubungi pengurus adopsi.',
+                  onTap: legacyPages
+                      ? () => context.push(
+                            '/adoption/return?adoption_id=$encodedId&name=$encodedName',
+                          )
+                      : null,
                 ),
               ],
             ),
@@ -370,7 +431,7 @@ class _FollowupProgress extends StatelessWidget {
 class _LinkRow extends StatelessWidget {
   final String label;
   final String description;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _LinkRow({
     required this.label,
@@ -401,8 +462,9 @@ class _LinkRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AdoptionTheme.textHint),
+            if (onTap != null)
+              const Icon(Icons.chevron_right_rounded,
+                  color: AdoptionTheme.textHint),
           ],
         ),
       ),

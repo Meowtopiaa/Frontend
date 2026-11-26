@@ -9,6 +9,8 @@ import '../data/adoption_model.dart';
 import '../data/adoption_repository.dart';
 import '../data/adoption_service.dart';
 import '../data/mock_adoption_repository.dart';
+import '../data/my_adoption_model.dart';
+import '../data/my_adoption_repository.dart';
 
 /// State Management Modul Adopsi Kucing (E-Nigma)
 /// Mengikuti pola ChangeNotifier yang digunakan pada feeding_spot & modul lainnya.
@@ -29,6 +31,17 @@ class AdoptionProvider extends ChangeNotifier {
   bool _isCatalogLoading = false;
   String? _catalogError;
 
+  // Kucing Saya (EN-20) dan laporan kendala (EN-23).
+  late final MyAdoptionRepository _myAdoptionRepository;
+  List<MyAdoption> _myAdoptions = [];
+  bool _isMyAdoptionsLoading = false;
+  String? _myAdoptionsError;
+  bool _isIssueSubmitting = false;
+  String? _issueError;
+  List<MyEligibility> _myEligibility = [];
+  bool _isEligibilityLoading = false;
+  String? _eligibilityError;
+
   // Loading & error states
   bool _isLoading = false;
   bool _isActionLoading = false;
@@ -44,11 +57,14 @@ class AdoptionProvider extends ChangeNotifier {
     AdoptionService? service,
     AdoptionRepository? repository,
     AdoptionCatalogRepository? catalogRepository,
+    MyAdoptionRepository? myAdoptionRepository,
   }) : _service = service ??
             AdoptionService(
               repository: repository ?? MockAdoptionRepository(),
             ) {
     _catalogRepository = catalogRepository ?? _defaultCatalogRepository();
+    _myAdoptionRepository =
+        myAdoptionRepository ?? _defaultMyAdoptionRepository();
     // Muat data awal secara otomatis
     fetchInitialData();
   }
@@ -60,6 +76,95 @@ class AdoptionProvider extends ChangeNotifier {
       return MockAdoptionCatalogRepository(source);
     }
     return ApiAdoptionCatalogRepository();
+  }
+
+  /// Sama seperti katalog: data tiruan di mode demo, selain itu dari API.
+  MyAdoptionRepository _defaultMyAdoptionRepository() {
+    final source = _service.repository;
+    if (AppConstants.demoMode && source is MockAdoptionRepository) {
+      return MockMyAdoptionRepository(source);
+    }
+    return ApiMyAdoptionRepository();
+  }
+
+  /// Adopsi ACTIVE milik pengguna untuk halaman Kucing Saya (ADP-08).
+  List<MyAdoption> get myAdoptions => List.unmodifiable(_myAdoptions);
+  bool get isMyAdoptionsLoading => _isMyAdoptionsLoading;
+  String? get myAdoptionsError => _myAdoptionsError;
+  bool get isIssueSubmitting => _isIssueSubmitting;
+  String? get issueError => _issueError;
+  bool get issuePhotoSupported => _myAdoptionRepository.supportsPhoto;
+  bool get legacyPagesSupported => _myAdoptionRepository.supportsLegacyPages;
+
+  /// Pengajuan kelayakan milik pengguna, terbaru lebih dulu (ADP-08).
+  List<MyEligibility> get myEligibility => List.unmodifiable(_myEligibility);
+  bool get isEligibilityLoading => _isEligibilityLoading;
+  String? get eligibilityError => _eligibilityError;
+
+  /// Memuat status kelayakan dari GET /adoption/applications/mine.
+  /// Gagal memuat tidak dianggap "belum ada pengajuan".
+  Future<void> fetchMyEligibility() async {
+    _isEligibilityLoading = true;
+    _eligibilityError = null;
+    notifyListeners();
+
+    try {
+      _myEligibility = await _myAdoptionRepository.getMyEligibility();
+    } catch (e) {
+      _eligibilityError = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isEligibilityLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Memuat Kucing Saya dari GET /adoption/mine (EN-20).
+  Future<void> fetchMyAdoptions() async {
+    _isMyAdoptionsLoading = true;
+    _myAdoptionsError = null;
+    notifyListeners();
+
+    try {
+      _myAdoptions = await _myAdoptionRepository.getMyAdoptions();
+    } catch (e) {
+      _myAdoptionsError = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isMyAdoptionsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Mengirim laporan kendala (EN-23, ADP-13). Mengembalikan null bila gagal;
+  /// pesan ada di [issueError]. Adopsi tidak ditutup oleh laporan ini.
+  Future<AdoptionIssueResult?> submitAdoptionIssue({
+    required String adoptionId,
+    required AdoptionIssueCategory category,
+    required String description,
+    required bool requestIncident,
+    required String idempotencyKey,
+    String? photo,
+  }) async {
+    if (_isIssueSubmitting) return null;
+    _isIssueSubmitting = true;
+    _issueError = null;
+    notifyListeners();
+
+    try {
+      return await _myAdoptionRepository.reportIssue(
+        adoptionId: adoptionId,
+        category: category,
+        description: description,
+        requestIncident: requestIncident,
+        idempotencyKey: idempotencyKey,
+        photo: photo,
+      );
+    } catch (e) {
+      _issueError = e.toString().replaceAll('Exception: ', '');
+      return null;
+    } finally {
+      _isIssueSubmitting = false;
+      notifyListeners();
+    }
   }
 
   /// Kucing katalog setelah filter aplikasi diterapkan.
@@ -532,7 +637,7 @@ class AdoptionProvider extends ChangeNotifier {
 
       _isActionLoading = false;
       _actionSuccessMessage =
-          'Laporan kendala berhasil tercatat. Tim caretaker kampus akan segera menindaklanjuti.';
+          'Laporan kendala tercatat. Pengurus adopsi akan meninjaunya.';
       notifyListeners();
       return report;
     } catch (e) {
